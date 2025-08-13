@@ -110,10 +110,10 @@
         </select>
       </span>
       <span class="chip"><label for="warnTh">黄しきい値(CPM)</label>
-        <input id="warnTh" type="range" min="40" max="240" value="75"><span id="warnVal">75</span>
+        <input id="warnTh" type="range" min="40" max="240" value="80"><span id="warnVal">80</span>
       </span>
       <span class="chip"><label for="badTh">赤しきい値(CPM)</label>
-        <input id="badTh" type="range" min="50" max="300" value="110"><span id="badVal">110</span>
+        <input id="badTh" type="range" min="50" max="300" value="100"><span id="badVal">100</span>
       </span>
       <span class="chip"><label for="warmupSec">ウォームアップ</label>
         <input id="warmupSec" type="range" min="0" max="20" value="10"><span id="warmVal">10s</span>
@@ -130,6 +130,7 @@
   <div id="aura" aria-hidden="true"></div>
 
 <script>
+
 async function saveWithPicker(text, fname){
   try {
     const handle = await window.showSaveFilePicker({
@@ -290,9 +291,9 @@ async function saveText(text) {
   const saveNum=(k,v)=>{try{localStorage.setItem(k,String(v))}catch(_){ }};
   const loadHigh=()=>loadNum(LS.high,0), saveHigh=(s)=>saveNum(LS.high,Math.max(0,Math.floor(s)));
   const loadAuto=()=>loadNum(LS.auto,180), saveAuto=(s)=>saveNum(LS.auto,s);
-  const loadWarn=()=>loadNum(LS.warn,80),  saveWarn=(v)=>saveNum(LS.warn,v);
-  const loadBad =()=>loadNum(LS.bad,100),  saveBad =(v)=>saveNum(LS.bad,v);
-  const loadWarm=()=>loadNum(LS.warm,6),   saveWarm=(v)=>saveNum(LS.warm,v);
+  const loadWarn=()=>loadNum(LS.warn,75),  saveWarn=(v)=>saveNum(LS.warn,v);
+  const loadBad =()=>loadNum(LS.bad,110),  saveBad =(v)=>saveNum(LS.bad,v);
+  const loadWarm=()=>loadNum(LS.warm,12),   saveWarm=(v)=>saveNum(LS.warm,v);
 
   warnEl.value=String(loadWarn()); badEl.value=String(loadBad()); warmupEl.value=String(loadWarm());
 
@@ -700,6 +701,11 @@ window.__sjSaveSmoke = function(){
   console.log('[save-smoke] anchors created:', created);
   return created; // 1 以上ならOK
 };
+
+
+
+
+
 </script>
 </body>
 </html>
