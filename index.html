@@ -642,7 +642,14 @@
     else if(window.__lastSpeedLevel==='warn'){ flashes.push({x:p.x,y:p.y,age:0,life:22,size:160*(Math.max(0.6,(+intensityEl.value)/100))}); }
     playGunshot();
   }
+  function onInput(ev){
+    const type = ev && ev.inputType || '';
+    const isPaste = type==='insertFromPaste' || type==='insertFromDrop';
+    const isCompType = /insertCompositionText|deleteCompositionText/.test(type) || (ev && ev.isComposing);
 
+    const now = performance.now();
+    const lenNow = sanitizeText(editor.innerText||'').length;
+    
   // ▼ ここが変更点：IME中はカウントせずにFX/SFXだけ鳴らす
   if (isComposing || isCompType) {
     const lenBefore = lastCountLen;   // 直前の長さ（比較用）
