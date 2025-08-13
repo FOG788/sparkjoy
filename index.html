@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SparkJoy Editor — GitHub Pages</title>
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#0b0f14">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SparkJoy">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <style>
+    :root{ --bg:#0b0f14; --ink:#e6ecf3; --muted:#9fb3c7; --panel:rgba(255,255,255,0.05); --border:rgba(255,255,255,0.12); }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0; background:var(--bg); color:var(--ink); font:16px/1.6 system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans JP", sans-serif;}
+    header{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px}
+    .btn{cursor:pointer; padding:8px 12px; border-radius:10px; border:1px solid var(--border); background:#152030; color:#e6ecf3}
+    .card{background:var(--panel); border:1px solid var(--border); border-radius:12px}
+    #toolbar{margin:10px 12px; padding:8px; display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+    .chip{display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:999px; background:rgba(0,0,0,.25); border:1px solid var(--border)}
+    .chip input[type="range"]{width:140px}
+    #editorWrap{margin:0 12px 12px}
+    #editor{min-height:48vh; padding:14px; outline:none; white-space:pre-wrap; word-break:break-word}
+    #editor[contenteditable="true"]:empty:before{content:"ここに書き始めよう…"; color:var(--muted)}
+    #fx{position:fixed; inset:0; pointer-events:none; z-index:1000}
+    .toast{position:fixed; left:50%; top:12px; transform:translateX(-50%); padding:8px 12px; border-radius:8px; background:#1f2a3a; color:#e6ecf3; border:1px solid rgba(255,255,255,.15); z-index:2000; opacity:.95}
+    #aura{position:fixed;inset:0;pointer-events:none;z-index:900;opacity:0;transition:opacity .18s ease;}
+    #aura.warn{opacity:.20;background:radial-gradient(60% 60% at 50% 50%, rgba(255,200,0,.12), rgba(255,150,0,.08), transparent 70%)}
+    #aura.bad{opacity:.36;background:radial-gradient(55% 55% at 50% 50%, rgba(255,60,60,.22), rgba(255,0,0,.12) 40%, transparent 72%);animation:pulseBad 600ms ease-in-out infinite alternate}
+    @keyframes pulseBad{from{opacity:.28}to{opacity:.45}}
+    @keyframes shakeWarn{0%{transform:translate(0,0) rotate(0deg)}25%{transform:translate(-2px,-1px) rotate(-0.12deg)}50%{transform:translate(2px,1px) rotate(0.12deg)}75%{transform:translate(-2px,0) rotate(-0.12deg)}100%{transform:translate(0,0) rotate(0deg)}}
+    @keyframes shakeBad{0%{transform:translate(0,0) rotate(0deg)}15%{transform:translate(-5px,-1px) rotate(-0.35deg)}35%{transform:translate(5px,1px) rotate(0.35deg)}55%{transform:translate(-6px,0) rotate(-0.35deg)}75%{transform:translate(6px,0) rotate(0.35deg)}100%{transform:translate(0,0) rotate(0deg)}}
+    body.shake-warn{animation:shakeWarn .28s linear 1}
+    body.shake-bad{animation:shakeBad .40s linear 1}
+    .tabs{display:flex; gap:6px; margin:0 12px}
+    .tabbtn{padding:6px 10px; border-radius:8px; border:1px solid var(--border); background:#152030; color:#e6ecf3; cursor:pointer}
+    .tabbtn.active{background:#1c2b40}
+    .panel{display:none}
+    .panel.active{display:block}
+    #settings{margin:10px 12px; padding:12px; display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+    .field{display:flex; flex-direction:column; gap:6px}
+    .field input[type="number"], .field select{padding:8px; border-radius:8px; border:1px solid var(--border); background:#0f1722; color:#e6ecf3}
+    .field small{color:#9fb3c7}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">SparkJoy Editor</div>
+    <div class="tray">
+      <button id="saveBtn" class="btn" type="button">保存</button>
+      <button id="clearBtn" class="btn" type="button">全消去</button>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tabbtn active" data-tab="editorTab">エディタ</button>
+    <button class="tabbtn" data-tab="settingsTab">設定</button>
+  </div>
+
+  <div id="editorTab" class="panel active">
+    <div id="toolbar" class="card">
+      <span class="chip"><label for="intensity">エフェクト大きさ</label>
+        <input id="intensity" type="range" min="0" max="100" value="15"><span id="ival">15</span>
+      </span>
+      <span class="chip"><label><input id="toggleFx" type="checkbox" checked> エフェクト</label></span>
+      <span class="chip"><label><input id="toggleSound" type="checkbox" checked> サウンド</label></span>
+      <span class="chip"><label for="soundVol">音量</label>
+        <input id="soundVol" type="range" min="0" max="100" value="90"><span id="sval">90</span>
+      </span>
+      <span class="chip"><label for="realism">リアル度</label>
+        <input id="realism" type="range" min="0" max="100" value="100"><span id="rval">100</span>
+      </span>
+      <span class="chip"><label for="reverb">リバーブ</label>
+        <input id="reverb" type="range" min="0" max="100" value="85"><span id="revval">85</span>
+      </span>
+      <span class="chip"><label for="jam">ジャム確率</label>
+        <input id="jam" type="range" min="0" max="100" value="20"><span id="jamval">20</span>
+      </span>
+      <span class="chip"><label for="preset">プリセット</label>
+        <select id="preset">
+          <option value="custom">カスタム</option>
+          <option value="deep">Deep Focus</option>
+          <option value="flow">Flow</option>
+          <option value="zen">Zen</option>
+          <option value="silent">Silent</option>
+          <option value="playful">Playful</option>
+        </select>
+      </span>
+      <span class="chip"><label>文字数</label><span id="charCount">0</span></span>
+      <span class="chip"><label>経過</label><span id="elapsed">00:00</span></span>
+      <span class="chip"><label>文字/分</label><span id="cpm">0</span></span>
+      <span class="chip"><label>平均WPM</label><span id="wpmAvg">0</span></span>
+      <span class="chip"><label for="mode">モード</label>
+        <select id="mode">
+          <option value="write">執筆</option>
+          <option value="revise">推敲</option>
+        </select>
+      </span>
+      <span id="idleChip" class="chip"><label>停止比</label><span id="idlePct">0%</span></span>
+    </div>
+
+    <div id="editorWrap" class="card">
+      <div id="editor" contenteditable="true" spellcheck="false"></div>
+    </div>
+  </div>
+
+  <div id="settingsTab" class="panel">
+    <div id="settings" class="card">
+      <div class="field">
+        <label for="warnThr">黄色しきい値（CPM）</label>
+        <input id="warnThr" type="number" min="10" max="600" step="5" value="80">
+        <small>この値以上で黄色（警告）</small>
+      </div>
+      <div class="field">
+        <label for="badThr">赤しきい値（CPM）</label>
+        <input id="badThr" type="number" min="20" max="800" step="5" value="100">
+        <small>この値以上で赤（強い警告）</small>
+      </div>
+      <div class="field">
+        <label for="warmupSec">ウォームアップ（秒）</label>
+        <input id="warmupSec" type="number" min="0" max="60" step="1" value="10">
+        <small>開始直後は警告を抑えます</small>
+      </div>
+      <div class="field">
+        <button id="resetStats" class="btn" type="button">統計だけリセット</button>
+        <small>本文は消さずに、時間/WPM/CPMだけリセット</small>
+      </div>
+    </div>
+  </div>
+
+  <canvas id="fx"></canvas>
+  <div id="aura" aria-hidden="true"></div>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(()=>{});
+      });
+    }
+  </script>
+  <script src="app.js" defer></script>
+</body>
+</html>
