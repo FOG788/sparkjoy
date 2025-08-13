@@ -600,6 +600,7 @@
   // ===== IME（composition）対策 ここが今回の修正ポイント =====
   let isComposing = false;
   let compBaseLen = 0;
+  let lastCompFxAt = 0; // ← 追加：変換中のFX/SFXを間引くためのタイムスタンプ
 
   editor.addEventListener('compositionstart', ()=>{
     isComposing = true;
@@ -642,22 +643,23 @@
     playGunshot();
   }
 
-  // ===== Input handler（IME中は積算しない） =====
-  function onInput(ev){
-    const type = ev && ev.inputType || '';
-    const isPaste = type==='insertFromPaste' || type==='insertFromDrop';
-    const isCompType = /insertCompositionText|deleteCompositionText/.test(type) || (ev && ev.isComposing);
+  // ▼ ここが変更点：IME中はカウントせずにFX/SFXだけ鳴らす
+  if (isComposing || isCompType) {
+    const lenBefore = lastCountLen;   // 直前の長さ（比較用）
+    lastCountLen = lenNow;            // 表示上の文字数は同期（カウントは積まない）
+    lastInputAt = now;
 
-    const now = performance.now();
-    const lenNow = sanitizeText(editor.innerText||'').length;
-
-    // IME中：合計は更新するが、CPM/WPMに積まない（確定で積む）
-    if (isComposing || isCompType) {
-      lastCountLen = lenNow;
-      lastInputAt = now;
-      updateStats();
-      return;
+    // 変換中でも寂しくならないように FX/SFX を出す（挿入系/増加時のみ＆60msスロットル）
+    const isInsertish = type.startsWith('insert') || lenNow > lenBefore;
+    if (isInsertish && (now - lastCompFxAt) > 60) {
+      crackAtCaret();                  // ここで Jam 確率も適用されます
+      lastCompFxAt = now;
     }
+
+    startStatsIfNeeded();              // 経過タイマーは動かす
+    updateStats();                     // ただし CPM/WPM の積算は行わない
+    return;                            // ← ここで抜ける
+  }
 
     // 通常入力：増分を積算（減った分は 0 扱い）
     const added = Math.max(0, lenNow - lastCountLen);
