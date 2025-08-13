@@ -130,6 +130,141 @@
   <div id="aura" aria-hidden="true"></div>
 
 <script>
+async function saveWithPicker(text, fname){
+  try {
+    const handle = await window.showSaveFilePicker({
+      suggestedName: fname,
+      types: [{ description: 'Text', accept: { 'text/plain': ['.txt'] } }]
+    });
+    const w = await handle.createWritable();
+    await w.write(new Blob([text], { type: 'text/plain;charset=utf-8' }));
+    await w.close();
+    toast('保存しました（ダウンロードではなく指定場所に保存）');
+    return true;
+  } catch (e) {
+    if (e && (e.name === 'AbortError' || e.code === 20)) {
+      toast('保存をキャンセルしました');
+      return false;
+    }
+    return false;
+  }
+}
+
+function isStandalone() {
+  // iOS Safari: navigator.standalone, それ以外: display-mode
+  return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+         || (typeof navigator !== 'undefined' && (navigator.standalone === true));
+}
+
+async function tryShareFile(text, filename) {
+  if (!navigator.share) return false;
+  try {
+    const file = new File([text], filename, { type: 'text/plain' });
+    if (!navigator.canShare || navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: filename });
+      toast('共有を開きました'); 
+      return true;
+    }
+  } catch (e) {
+    // ユーザーが閉じた等は静かに無視
+  }
+  return false;
+}
+
+// 環境判定（iOS / standalone）
+function isIOS() {
+  const ua = navigator.userAgent || '';
+  const iDevice = /iPad|iPhone|iPod/.test(ua);
+  const iPadOS  = (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  return iDevice || iPadOS;
+}
+// ---- a[download] で即時ダウンロード（同期タスク内で実行）----
+function forceDownload(text, filename) {
+  const blob = new Blob([text], { type: 'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();              // ← ここが同期で走ることが重要（iOS）
+  // 片付けは次のタスクで
+  setTimeout(() => {
+    try { URL.revokeObjectURL(url); } catch(_) {}
+    try { a.remove(); } catch(_) {}
+  }, 0);
+}
+
+
+// iOS を含む全プラットフォーム共通：Blob を a[download] で一発ダウンロード
+function downloadViaAnchor(text, filename){
+  const blob = new Blob([text], { type: 'application/octet-stream' }); // 強制DL
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click(); // 1回だけ
+  setTimeout(()=>{ try{URL.revokeObjectURL(url);}catch(_){} try{document.body.removeChild(a);}catch(_){} },0);
+}
+
+
+
+
+/* すでに toast があれば何もしない。無ければグローバルに定義 */
+// ---- トースト（グローバル） ----
+window.toast ||= function (msg) {
+  try {
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.textContent = String(msg);
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 1400);
+  } catch (_) { console.log('[toast]', msg); }
+};
+
+function makeFilename(){
+  return `sparkjoy_${new Date().toISOString().replace(/[:.]/g,'-')}.txt`;
+}
+window.makeFilename = makeFilename; // 念のため外にも公開
+
+// 共有シートやパネルに逃げず、iPadでも必ずダウンロードを試みる保存フロー
+async function saveText(text) {
+  const fname = makeFilename();
+
+  if (isIOS()) {
+    // iOS はユーザー操作直後の同期で a.click() するのが最も確実
+    forceDownload(text, fname);
+    toast('ダウンロードを開始しました');
+    return true;
+  }
+
+  if (window.showSaveFilePicker) {
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: fname,
+        types: [{ description: 'Text', accept: { 'text/plain': ['.txt'] } }]
+      });
+      const w = await handle.createWritable();
+      await w.write(new Blob([text], { type: 'text/plain;charset=utf-8' }));
+      await w.close();
+      toast('保存しました');
+      return true;
+    } catch (e) {
+      // ユーザーキャンセルは何もしない（二重DL防止）
+      if (e && (e.name === 'AbortError' || e.code === 20)) {
+        toast('保存をキャンセルしました');
+        return false;
+      }
+      // それ以外のエラーのみ、1回だけDLにフォールバック
+    }
+  }
+  forceDownload(text, fname);
+  toast('ダウンロードを開始しました');
+  return true;
+}
+
+
+
 (()=>{'use strict';
   const $ = (id)=>document.getElementById(id);
   const editor=$('editor'), saveBtn=$('saveBtn'), clearBtn=$('clearBtn');
@@ -442,7 +577,7 @@
     const close=document.createElement('button'); close.className='btn'; close.textContent='閉じる'; close.addEventListener('click',()=>{ document.body.removeChild(overlay); });
     box.appendChild(msg); box.appendChild(area); overlay.appendChild(box); document.body.appendChild(overlay); toast('保存リンクを表示しました');
   }
-  function makeFilename(){ return `sparkjoy_${new Date().toISOString().replace(/[:.]/g,'-')}.txt`; }
+// ---- ファイル名 ----
 
   async function saveNow(text){
     const filename=makeFilename();
@@ -465,46 +600,106 @@
     showSaveFallback(text, filename); return false;
   }
 
-  function askClear(){
-    const overlay=document.createElement('div'); overlay.className='overlay';
-    const box=document.createElement('div'); box.className='modal';
-    const msg=document.createElement('div'); msg.textContent='すべて削除しますか？'; msg.style.marginBottom='12px';
-    const row=document.createElement('div'); row.className='row';
-    const ok=document.createElement('button'); ok.className='btn'; ok.textContent='OK';
-    const cancel=document.createElement('button'); cancel.className='btn'; cancel.textContent='キャンセル';
-    row.appendChild(cancel); row.appendChild(ok); box.appendChild(msg); box.appendChild(row); overlay.appendChild(box); document.body.appendChild(overlay);
-    const cleanup=()=>{ try{document.body.removeChild(overlay)}catch(_){ } };
-    ok.addEventListener('click',()=>{ cleanup(); doClear(); });
-    cancel.addEventListener('click',cleanup);
-    overlay.addEventListener('click',(e)=>{ if(e.target===overlay) cleanup(); });
-  }
-  function doClear(){
-    editor.innerHTML=''; cracks.length=0; ctx.clearRect(0,0,innerWidth,innerHeight);
-    const sel=getSelection(); if(sel){ try{sel.removeAllRanges();}catch(_){ } const r=document.createRange(); try{r.setStart(editor,0);}catch(_){ r.selectNodeContents(editor);} r.collapse(true); sel.addRange(r); }
-    editor.focus(); const rect=editor.getBoundingClientRect(); lastCaret={x:Math.max(0,rect.left+8), y:Math.max(0,rect.top+8)}; endSession('clear'); toast('クリアしました');
+// === 全消去ダイアログ ===
+function askClear(){
+  const overlay = document.createElement('div'); overlay.className='overlay';
+  const box = document.createElement('div'); box.className='modal';
+  const msg = document.createElement('div'); msg.textContent='すべて削除しますか？'; msg.style.marginBottom='12px';
+  const row = document.createElement('div'); row.className='row';
+  const ok=document.createElement('button'); ok.className='btn'; ok.textContent='OK';
+  const cancel=document.createElement('button'); cancel.className='btn'; cancel.textContent='キャンセル';
+  row.appendChild(cancel); row.appendChild(ok); box.appendChild(msg); box.appendChild(row);
+  overlay.appendChild(box); document.body.appendChild(overlay);
+  const cleanup=()=>{ try{document.body.removeChild(overlay);}catch(_){ } };
+  ok.addEventListener('click', ()=>{ cleanup(); doClear(); });
+  cancel.addEventListener('click', cleanup);
+  overlay.addEventListener('click', (e)=>{ if(e.target===overlay) cleanup(); });
+}
+
+function doClear(){
+  editor.innerHTML='';
+  // 画面エフェクトも消去
+  if (typeof cracks!=='undefined'){ cracks.length=0; }
+  try { ctx.clearRect(0,0,window.innerWidth, window.innerHeight); } catch(_){}
+  // キャレットを先頭に戻す
+  const sel = window.getSelection();
+  if(sel){ try{ sel.removeAllRanges(); const r=document.createRange(); r.setStart(editor,0); r.collapse(true); sel.addRange(r);}catch(_){ } }
+  editor.focus();
+  // セッション終了（統計もリセット）
+  if (typeof endSession==='function'){ endSession('clear'); }
+  toast('クリアしました');
+}
+
+
+
+
+if (saveBtn && !saveBtn.dataset.bound) {
+  saveBtn.dataset.bound = '1';
+  saveBtn.addEventListener('click', async (ev) => {
+    const text  = sanitizeText(editor?.innerText || '');
+    const fname = makeFilename();
+
+    // Shift+クリックなら「名前を付けて保存…」
+    if (ev.shiftKey && window.showSaveFilePicker) {
+      await saveWithPicker(text, fname);
+      return;
+    }
+
+    // デフォルトは即ダウンロード
+    try {
+      forceDownload(text, fname);
+      toast('ダウンロードを開始しました');
+      return;
+    } catch (_) {}
+
+    // ブロック/失敗時のフォールバック
+    if (window.showSaveFilePicker) {
+      await saveWithPicker(text, fname);
+    } else {
+      showSaveFallback(text, fname);
+    }
+  });
+}
+
+
+
+
+
+  // クリア（既存の askClear/doClear をそのまま使用）
+  if (clearBtn && !clearBtn.dataset.bound) {
+    clearBtn.dataset.bound = '1';
+    clearBtn.addEventListener('click', () => {
+      if (typeof askClear === 'function') askClear();
+      else if (typeof doClear === 'function') doClear();
+    }, { passive:true });
   }
 
-  // Bind buttons
-  saveBtn.addEventListener('click',()=>{ const plain=sanitizeText(editor.innerText||''); const fname=makeFilename(); if(IN_CANVAS){ showSavePanel(plain,fname); } else { void saveNow(plain); } });
-  clearBtn.addEventListener('click', askClear);
-  resetSessionBtn.addEventListener('click', ()=>endSession('manual'));
+  if (resetSessionBtn && !resetSessionBtn.dataset.bound) {
+    resetSessionBtn.dataset.bound = '1';
+    resetSessionBtn.addEventListener('click', ()=> {
+      if (typeof endSession === 'function') endSession('manual');
+    }, { passive:true });
+  }
+})();
 
-  // Self tests
-  window.__sparkjoyTest=function(){
-    const report=[]; try{
-      report.push(editor?'OK: editor':'NG: editor');
-      report.push(canvas&&ctx?'OK: canvas':'NG: canvas');
-      const base=sanitizeText(editor.innerText||'').length; const before=cracks.length;
-      editor.innerText=(editor.innerText||'')+'x'; onInput({inputType:'insertText'}); report.push(cracks.length>before?'OK: エフェクト':'NG: エフェクト');
-      report.push((charCountEl && parseInt(charCountEl.textContent,10)>=base+1)?'OK: 文字数':'NG: 文字数');
-      const beforeSum=cpmEl?parseInt(cpmEl.textContent||'0',10):0; editor.innerText+='PASTE_TEXT'; onInput({inputType:'insertFromPaste'}); const afterSum=cpmEl?parseInt(cpmEl.textContent||'0',10):0;
-      report.push(afterSum>=beforeSum?'OK: paste-safe':'NG: paste inflated');
-      // Clear test
-      doClear(); report.push(sanitizeText(editor.innerText||'').length===0?'OK: クリア':'NG: クリア');
-    }catch(e){ report.push('NG: 例外 '+(e&&e.message?e.message:e)); }
-    return report;
+
+
+// ---- 簡易テスト（アンカーが作られるか） ----
+window.__sjSaveSmoke = function(){
+  let created = 0;
+  const orig = document.createElement;
+  document.createElement = function(tag){
+    if (tag === 'a') created++;
+    return orig.call(document, tag);
   };
-
-})();</script>
+  try {
+    forceDownload('test', makeFilename());
+  } finally {
+    document.createElement = orig;
+  }
+  console.log('[save-smoke] anchors created:', created);
+  return created; // 1 以上ならOK
+};
+</script>
 </body>
 </html>
