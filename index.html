@@ -2,7 +2,11 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="manifest" href="./manifest.json?v=20250813-3">
+  <meta name="viewport" content="width=device-width, initial-scale=1"  viewport-fit=cover"/>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SparkJoy">
   <title>SparkJoy Editor — Crack Shot (r9 warmup + custom thresholds)</title>
   <style>
     :root{ --bg:#0b0f14; --ink:#e6ecf3; --muted:#9fb3c7; --panel:rgba(255,255,255,0.05); --border:rgba(255,255,255,0.12); }
@@ -43,6 +47,12 @@
     #settingsBar{display:none}
     body.tab-settings #settingsBar{display:flex}
     body.tab-settings #statsBar{display:none}
+    /* PWA（ホーム画面から起動＝standalone表示）のときだけ上マージンを増やす */
+    @media (display-mode: standalone) {
+      header { 
+        padding-top: calc(env(safe-area-inset-top) + 6px);
+      }
+    }
   </style>
 </head>
 <body class="tab-editor">
