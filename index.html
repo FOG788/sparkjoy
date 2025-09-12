@@ -45,10 +45,6 @@
     body.shake-warn{animation:shakeWeak .28s linear 1}
     body.shake-bad{animation:shakeStrong .45s linear 1}
     #settingsBar{display:none}
-    <span class="chip"><label for="fontSize">文字サイズ</label>
-　    <input id="fontSize" type="range" min="12" max="28" value="16">
-　    <span id="fsVal">16px</span>
-  　</span>
     body.tab-settings #settingsBar{display:flex}
     body.tab-settings #statsBar{display:none}
     @media (display-mode: standalone) { header { padding-top: calc(env(safe-area-inset-top) + 6px); } }
@@ -102,6 +98,12 @@
     </div>
 
     <div id="settingsBar" class="bar">
+      <span class="chip">
+        <label for="fontSize">文字サイズ</label>
+        <input id="fontSize" type="range" min="12" max="28" step="1" value="16">
+        <span id="fsVal">16px</span>
+      </span>
+      
       <span class="chip"><label for="intensity">エフェクト大きさ</label>
         <input id="intensity" type="range" min="0" max="100" value="15"><span id="ival">15</span>
       </span>
