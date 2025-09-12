@@ -45,6 +45,10 @@
     body.shake-warn{animation:shakeWeak .28s linear 1}
     body.shake-bad{animation:shakeStrong .45s linear 1}
     #settingsBar{display:none}
+    <span class="chip"><label for="fontSize">文字サイズ</label>
+　    <input id="fontSize" type="range" min="12" max="28" value="16">
+　    <span id="fsVal">16px</span>
+  　</span>
     body.tab-settings #settingsBar{display:flex}
     body.tab-settings #statsBar{display:none}
     @media (display-mode: standalone) { header { padding-top: calc(env(safe-area-inset-top) + 6px); } }
@@ -283,8 +287,15 @@ async function saveText(text) {
 
 
 (()=>{'use strict';
+  function applyFont(px){
+    const v = Math.max(10, Math.min(40, +px||16));
+    if (editor) editor.style.fontSize = v + 'px';
+    if (fsVal)  fsVal.textContent    = v + 'px';
+  }
+  applyFont(loadFs());
   const $ = (id)=>document.getElementById(id);
   const editor=$('editor'), saveBtn=$('saveBtn'), clearBtn=$('clearBtn'), copyBtn=$('copyBtn');
+  const fontEl=$('fontSize'), fsVal=$('fsVal');
   const intensityEl=$('intensity'), ival=$('ival'), toggleFx=$('toggleFx'), toggleSound=$('toggleSound');
   const soundVolEl=$('soundVol'), sval=$('sval'), realismEl=$('realism'), rval=$('rval'), reverbEl=$('reverb'), revval=$('revval');
   const jamEl=$('jam'), jamval=$('jamval'), presetSel=$('preset');
@@ -302,7 +313,7 @@ async function saveText(text) {
   tabs.forEach(btn=>btn.addEventListener('click',()=>{tabs.forEach(b=>b.classList.remove('active'));btn.classList.add('active');const tab=btn.dataset.tab;document.body.classList.toggle('tab-settings',tab==='settings');document.body.classList.toggle('tab-editor',tab!=='settings');}));
 
   // Storage helpers
-  const LS={high:'sj_highscore_sec',auto:'sj_auto_reset_sec',warn:'sj_warn_cpm',bad:'sj_bad_cpm',warm:'sj_warmup_sec'};
+  const LS={high:'sj_highscore_sec',auto:'sj_auto_reset_sec',warn:'sj_warn_cpm',bad:'sj_bad_cpm',warm:'sj_warmup_sec',fs:'sj_font_px'};
   const loadNum=(k,def)=>{try{const v=parseInt(localStorage.getItem(k)||String(def),10);return isNaN(v)?def:v}catch(_){return def}};
   const saveNum=(k,v)=>{try{localStorage.setItem(k,String(v))}catch(_){ }};
   const loadHigh=()=>loadNum(LS.high,0), saveHigh=(s)=>saveNum(LS.high,Math.max(0,Math.floor(s)));
@@ -310,15 +321,23 @@ async function saveText(text) {
   const loadWarn=()=>loadNum(LS.warn,75),  saveWarn=(v)=>saveNum(LS.warn,v);
   const loadBad =()=>loadNum(LS.bad,110),  saveBad =(v)=>saveNum(LS.bad,v);
   const loadWarm=()=>loadNum(LS.warm,12),   saveWarm=(v)=>saveNum(LS.warm,v);
+  const loadFs  =()=>loadNum(LS.fs,16),     saveFs  =(v)=>saveNum(LS.fs,v);
 
   warnEl.value=String(loadWarn()); badEl.value=String(loadBad()); warmupEl.value=String(loadWarm());
-
-  function refreshUI(){ ival.textContent=intensityEl.value; sval.textContent=soundVolEl.value; rval.textContent=realismEl.value; revval.textContent=reverbEl.value; jamval.textContent=jamEl.value; warnVal.textContent=warnEl.value; badVal.textContent=badEl.value; warmVal.textContent=warmupEl.value+'s'; }
-  ;[intensityEl,soundVolEl,realismEl,reverbEl,jamEl].forEach(el=>el.addEventListener('input',refreshUI));
+  if (fontEl) fontEl.value = String(loadFs());
+      
+function refreshUI(){ ival.textContent=intensityEl.value; sval.textContent=soundVolEl.value; rval.textContent=realismEl.value; revval.textContent=reverbEl.value; jamval.textContent=jamEl.value; warnVal.textContent=warnEl.value; badVal.textContent=badEl.value; warmVal.textContent=warmupEl.value+'s'; if(fontEl&&fsVal) fsVal.textContent=fontEl.value+'px'; }
+      ;[intensityEl,soundVolEl,realismEl,reverbEl,jamEl].forEach(el=>el.addEventListener('input',refreshUI));
+      fontEl && fontEl.addEventListener('input', ()=>{
+        applyFont(fontEl.value);
+        saveFs(+fontEl.value||16);
+        // 文字サイズ変更後にキャレット位置の再補正（タイプライターモードの揺れ防止）
+        if (typeof scheduleTW==='function') scheduleTW();
+      });
   warnEl.addEventListener('input',()=>{refreshUI();saveWarn(warnEl.value)});
   badEl .addEventListener('input',()=>{refreshUI();saveBad (badEl.value)});
   warmupEl.addEventListener('input',()=>{refreshUI();saveWarm(warmupEl.value)});
-  function markCustom(){try{if(presetSel) presetSel.value='custom';}catch(_){}}; [intensityEl,soundVolEl,realismEl,reverbEl,jamEl,warnEl,badEl,warmupEl,toggleFx,toggleSound].forEach(el=>el&&el.addEventListener(('input'in el)?'input':'change',markCustom));
+  function markCustom(){try{if(presetSel) presetSel.value='custom';}catch(_){}}; [intensityEl,soundVolEl,realismEl,reverbEl,jamEl,warnEl,badEl,warmupEl,toggleFx,toggleSound,fontEl].forEach(el=>el&&el.addEventListener(('input'in el)?'input':'change',markCustom));
   refreshUI();
 
   // Stats
