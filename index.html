@@ -48,6 +48,21 @@
     body.tab-settings #settingsBar{display:flex}
     body.tab-settings #statsBar{display:none}
     @media (display-mode: standalone) { header { padding-top: calc(env(safe-area-inset-top) + 6px); } }
+    /* ==== タイプライターモード用スペーサ ==== */
+    :root{
+      /* 好みで調整（中央キープのための余白） */
+      --tw-top: 18vh;     /* 上側のダミー余白 */
+      --tw-bottom: 46vh;  /* 下側のダミー余白（大きめに） */
+    }
+    #editor::before,
+    #editor::after{
+      content:"";
+      display:block;
+      pointer-events:none;
+    }    
+    #editor::before{ height: var(--tw-top); }
+    #editor::after{  height: var(--tw-bottom); }
+
   </style>
 </head>
 <body class="tab-editor">
@@ -460,7 +475,44 @@ async function saveText(text) {
     }
     const x=rect.left+rect.width/2, y=rect.top+rect.height/2; lastCaret={x,y}; return lastCaret;
   }
-
+      // === タイプライターモード（中央付近キープ） =========================
+      const TYPEWRITER = {
+        enabled: true,    // 必要なら設定タブからON/OFFしてもOK
+        center: 0.5,      // 0.5 = 画面ちょうど中央（好みで 0.45 ~ 0.55 など）
+        dead: 60          // 許容帯（px）。外れたときだけスクロール
+          };
+      
+      let twRaf = 0;
+  function keepCaretCentered(){
+    if (!TYPEWRITER.enabled) return;
+    // 可視ビューポート（モバイルのキーボード表示にも対応）
+    const vv = window.visualViewport;
+    const vTop = vv ? vv.offsetTop : 0;
+    const vH   = vv ? vv.height   : window.innerHeight;
+    const target = vTop + vH * TYPEWRITER.center;
+    
+    const p = caretClientPoint(); // 既存関数：キャレット位置（viewport座標）
+    const bandMin = target - TYPEWRITER.dead;
+    const bandMax = target + TYPEWRITER.dead;
+    
+    let dy = 0;
+    if (p.y < bandMin) dy = p.y - bandMin;
+    else if (p.y > bandMax) dy = p.y - bandMax;
+    
+    if (dy !== 0) {
+      // ページスクロールを調整
+      const sc = document.scrollingElement || document.documentElement;
+      const newTop = Math.max(0, Math.min(sc.scrollHeight - vH, window.scrollY + dy));
+      // 'auto' は即時。'smooth' にすると入力と競合して揺れる場合あり
+      window.scrollTo({ top: newTop, behavior: 'auto' });
+    }
+  }
+      // スケジューラ（連打でも1フレームにまとめる）
+  function scheduleTW(){
+    if (!TYPEWRITER.enabled) return;
+    cancelAnimationFrame(twRaf);
+    twRaf = requestAnimationFrame(keepCaretCentered);
+  }
   function playGunshot(){
     if(!toggleSound.checked) return; ensureAudio(); resumeAudio();
     const a=audioCtx, now=a.currentTime, UIvol=(+soundVolEl.value/100);
@@ -473,7 +525,7 @@ async function saveText(text) {
     const thAmp=0.8+0.4*R;
     const pingAmp=(v.pingHz?0.30*(1-0.85*R):0) * m.pingMul;
     const wetMix=(v.tailMix||0.3)*(0.25+0.75*R)*(0.2+1.8*RV) * m.wetMul;
-
+    
     const panNode=a.createStereoPanner? a.createStereoPanner():null;
     if(panNode){ const pan=(lastCaret.x/innerWidth-0.5)*1.6; panNode.pan.setValueAtTime(Math.max(-1,Math.min(1,pan)), now); }
 
