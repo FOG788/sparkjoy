@@ -561,8 +561,32 @@ async function saveText(text) {
   // IME（composition）: 変換中はカウントしないがFX/SFXは出す（60msスロットル）
   let isComposing=false, compBaseLen=0, lastCompFxAt=0;
   editor.addEventListener('compositionstart',()=>{ isComposing=true; compBaseLen=sanitizeText(editor.innerText||'').length; });
-  editor.addEventListener('compositionend',()=>{ const now=performance.now(); const lenNow=sanitizeText(editor.innerText||'').length; const delta=Math.max(0,lenNow-compBaseLen); lastCountLen=lenNow; isComposing=false;
-    if(delta>0){ cDeltaBuf.push({t:now,c:delta}); const cutoff=now-ROLL_MS; while(cDeltaBuf.length&&cDeltaBuf[0].t<cutoff){cDeltaBuf.shift();} lastInputAt=now; const p=caretClientPoint(); spawnCrack(p.x,p.y); if(window.__lastSpeedLevel==='bad'){flashes.push({x:p.x,y:p.y,age:0,life:36,size:240*(Math.max(0.6,(+intensityEl.value)/100))});} else if(window.__lastSpeedLevel==='warn'){flashes.push({x:p.x,y:p.y,age:0,life:22,size:160*(Math.max(0.6,(+intensityEl.value)/100))});} playGunshot(); startStatsIfNeeded(); updateStats(); } else { updateStats(); }
+  editor.addEventListener('compositionend',()=>{
+    const now=performance.now();
+    const lenNow=sanitizeText(editor.innerText||'').length;
+    const delta=Math.max(0,lenNow-compBaseLen);
+    lastCountLen=lenNow; 
+    isComposing=false;
+    
+    if(delta>0){
+      cDeltaBuf.push({t:now,c:delta});
+      const cutoff=now-ROLL_MS;
+      while(cDeltaBuf.length&&cDeltaBuf[0].t<cutoff){cDeltaBuf.shift();}
+      lastInputAt=now;
+      const p=caretClientPoint(); 
+      spawnCrack(p.x,p.y);
+      if(window.__lastSpeedLevel==='bad'){
+        flashes.push({x:p.x,y:p.y,age:0,life:36,size:240*(Math.max(0.6,(+intensityEl.value)/100))});
+      } else if(window.__lastSpeedLevel==='warn'){
+        flashes.push({x:p.x,y:p.y,age:0,life:22,size:160*(Math.max(0.6,(+intensityEl.value)/100))});
+        } 
+      playGunshot();
+      startStatsIfNeeded();
+      updateStats();
+    } else { 
+      updateStats();
+    }
+    scheduleTW();
   });
 
   function crackAtCaret(){
@@ -588,12 +612,24 @@ async function saveText(text) {
     if(!isPaste && added>0){ cDeltaBuf.push({t:now,c:added}); const cutoff=now-ROLL_MS; while(cDeltaBuf.length&&cDeltaBuf[0].t<cutoff){ cDeltaBuf.shift(); } }
     lastInputAt=now;
     if(!isPaste && added>0){ markKeystroke(); crackAtCaret(); }
-    startStatsIfNeeded(); updateStats();
+    startStatsIfNeeded(); 
+    updateStats();
+    scheduleTW();
   }
   editor.addEventListener('input', onInput);
   modeSel && modeSel.addEventListener('change', updateStats);
-  editor.addEventListener('focus',()=>{ lastCaret=caretClientPoint(); });
-  editor.setAttribute('role','textbox'); editor.setAttribute('aria-multiline','true'); editor.focus();
+  editor.addEventListener('focus',()=>{
+    lastCaret=caretClientPoint();
+    scheduleTW();
+  });
+      editor.addEventListener('click', scheduleTW);
+      editor.addEventListener('keyup', (e)=>{
+        if (e.key && /Arrow|PageUp|PageDown|Home|End/.test(e.key)) scheduleTW();
+      });
+  window.addEventListener('resize', scheduleTW);
+  editor.setAttribute('role','textbox'); 
+  editor.setAttribute('aria-multiline','true');
+  editor.focus();
 
   // ---- Utils / Save / Clear ----
   function toast(msg){ try{ const t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),1400);}catch(_){} }
