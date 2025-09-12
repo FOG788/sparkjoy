@@ -70,6 +70,7 @@
     <div class="brand">SparkJoy Editor</div>
     <div class="tray">
       <button id="saveBtn" class="btn" type="button">保存</button>
+      <button id="copyBtn" class="btn" type="button">コピー</button>
       <button id="clearBtn" class="btn" type="button">全消去</button>
     </div>
   </header>
@@ -283,7 +284,7 @@ async function saveText(text) {
 
 (()=>{'use strict';
   const $ = (id)=>document.getElementById(id);
-  const editor=$('editor'), saveBtn=$('saveBtn'), clearBtn=$('clearBtn');
+  const editor=$('editor'), saveBtn=$('saveBtn'), clearBtn=$('clearBtn'), copyBtn=$('copyBtn');
   const intensityEl=$('intensity'), ival=$('ival'), toggleFx=$('toggleFx'), toggleSound=$('toggleSound');
   const soundVolEl=$('soundVol'), sval=$('sval'), realismEl=$('realism'), rval=$('rval'), reverbEl=$('reverb'), revval=$('revval');
   const jamEl=$('jam'), jamval=$('jamval'), presetSel=$('preset');
@@ -727,7 +728,54 @@ async function saveText(text) {
   editor.setAttribute('role','textbox'); 
   editor.setAttribute('aria-multiline','true');
   editor.focus();
-
+      // クリップボード（Clipboard API → フォールバック）
+  async function copyTextToClipboard(text){
+    // 1) 近代ブラウザ（https or PWA）
+    try{
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function'){
+        await navigator.clipboard.writeText(text);
+        toast('コピーしました');
+        return true;
+      }
+    }catch(_){}
+    
+    // 2) フォールバック（hidden textarea）
+    try{
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly','');
+      ta.style.position = 'fixed';
+      ta.style.top = '-1000px';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus(); ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      if (ok){ toast('コピーしました'); return true; }
+    }catch(_){}
+    
+    toast('コピーできませんでした');
+    return false;
+  }
+      
+      // ボタンに紐づけ
+      if (copyBtn && !copyBtn.dataset.bound){
+        copyBtn.dataset.bound = '1';
+        copyBtn.addEventListener('click', async () => {
+          const text = sanitizeText(editor?.innerText || '');
+          await copyTextToClipboard(text);
+        });
+      }
+      
+      // お好みでショートカット（Ctrl/Cmd+Shift+C で全コピー）
+      addEventListener('keydown', (e)=>{
+        if ((e.ctrlKey||e.metaKey) && e.shiftKey && e.code==='KeyC'){
+          const text = sanitizeText(editor?.innerText || '');
+          copyTextToClipboard(text);
+          e.preventDefault();
+        }
+      });
+  
   // ---- Utils / Save / Clear ----
   function toast(msg){ try{ const t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),1400);}catch(_){} }
   function sanitizeText(t){ return String(t||'').replace(/[​﻿]/g,''); }
