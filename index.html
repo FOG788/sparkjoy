@@ -411,6 +411,37 @@ async function saveText(text) {
     }
     cracks.push({segments:segs});
   }
+  function spawnSingleImpactAround(cx, cy, opts = {}) {
+  if (!toggleFx.checked) return;
+
+  const I = Math.max(0, Math.min(100, +intensityEl.value || 0));
+  const level = window.__lastSpeedLevel || 'none';
+
+  // 半径は強度とスピードで少しだけ変化
+  const rBase  = opts.radius ?? (24 + I * 1.1 + (level === 'bad' ? 10 : 0));
+  const jitter = opts.jitter ?? (rBase * 0.4);
+
+  const ang = Math.random() * Math.PI * 2;
+  const r   = Math.max(6, rBase + (Math.random() * 2 - 1) * jitter);
+
+  const x = cx + Math.cos(ang) * r;
+  const y = cy + Math.sin(ang) * r;
+
+  // 既存のひび割れ 1つだけ
+  spawnCrack(x, y);
+
+  // 小さめフラッシュ（眩しいなら消してOK）
+  flashes.push({
+    x, y,
+    age: 0,
+    life: (level === 'bad' ? 18 : 14),
+    size: 80 * Math.max(0.5, (+intensityEl.value) / 100)
+  });
+
+  // クレーター機能を入れている場合だけ追加（無ければ無視される）
+  if (typeof addHole === 'function') addHole(x, y);
+}
+
   function addHole(x, y) {
     holes.push({
       x, y,
@@ -641,7 +672,7 @@ async function saveText(text) {
       while(cDeltaBuf.length&&cDeltaBuf[0].t<cutoff){cDeltaBuf.shift();}
       lastInputAt=now;
       const p = caretClientPoint();
-      spawnCrackRing(p.x, p.y);
+      spawnSingleImpactAround(p.x, p.y);
       if(window.__lastSpeedLevel==='bad'){
         flashes.push({x:p.x,y:p.y,age:0,life:36,size:240*(Math.max(0.6,(+intensityEl.value)/100))});
       } else if(window.__lastSpeedLevel==='warn'){
@@ -658,9 +689,8 @@ async function saveText(text) {
 
   function crackAtCaret(){
     const jamP=Math.max(0,Math.min(1,(+jamEl.value||0)/100)); if(Math.random()<jamP) return;
-    const p = caretClientPoint();spawnCrackRing(p.x, p.y);
-    if(window.__lastSpeedLevel==='bad'){flashes.push({x:p.x,y:p.y,age:0,life:36,size:240*(Math.max(0.6,(+intensityEl.value)/100))});}
-    else if(window.__lastSpeedLevel==='warn'){flashes.push({x:p.x,y:p.y,age:0,life:22,size:160*(Math.max(0.6,(+intensityEl.value)/100))});}
+    const p = caretClientPoint();
+    spawnSingleImpactAround(p.x, p.y);
     playGunshot();
   }
 
