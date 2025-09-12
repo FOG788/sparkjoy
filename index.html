@@ -287,12 +287,7 @@ async function saveText(text) {
 
 
 (()=>{'use strict';
-  function applyFont(px){
-    const v = Math.max(10, Math.min(40, +px||16));
-    if (editor) editor.style.fontSize = v + 'px';
-    if (fsVal)  fsVal.textContent    = v + 'px';
-  }
-  applyFont(loadFs());
+
   const $ = (id)=>document.getElementById(id);
   const editor=$('editor'), saveBtn=$('saveBtn'), clearBtn=$('clearBtn'), copyBtn=$('copyBtn');
   const fontEl=$('fontSize'), fsVal=$('fsVal');
@@ -304,6 +299,7 @@ async function saveText(text) {
   const aura=$('aura'), canvas=$('fx'), ctx=canvas.getContext('2d');
   const tabs=document.querySelectorAll('#tabs .tab'), autoResetSel=$('autoReset');
   const warnEl=$('warnTh'), badEl=$('badTh'), warmupEl=$('warmupSec'), warnVal=$('warnVal'), badVal=$('badVal'), warmVal=$('warmVal');
+  
 
   // Canvas DPR
   function resizeCanvas(){ const DPR=window.devicePixelRatio||1; canvas.width=innerWidth*DPR|0; canvas.height=innerHeight*DPR|0; canvas.style.width=innerWidth+'px'; canvas.style.height=innerHeight+'px'; ctx.setTransform(DPR,0,0,DPR,0,0); }
@@ -323,6 +319,13 @@ async function saveText(text) {
   const loadWarm=()=>loadNum(LS.warm,12),   saveWarm=(v)=>saveNum(LS.warm,v);
   const loadFs  =()=>loadNum(LS.fs,16),     saveFs  =(v)=>saveNum(LS.fs,v);
 
+  function applyFont(px){
+    const v = Math.max(10, Math.min(40, +px||16));
+    if (editor) editor.style.fontSize = v + 'px';
+    if (fsVal)  fsVal.textContent    = v + 'px';
+  }
+  applyFont(loadFs());
+  
   warnEl.value=String(loadWarn()); badEl.value=String(loadBad()); warmupEl.value=String(loadWarm());
   if (fontEl) fontEl.value = String(loadFs());
       
