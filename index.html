@@ -387,7 +387,7 @@ async function saveText(text) {
   updateStats();
 
   // Crack effect
-  const cracks=[], flashes=[];
+  const cracks=[], flashes=[], holes=[];
   function spawnCrack(x,y){
     if(!toggleFx.checked) return;
     const I=Math.max(0,Math.min(100,+intensityEl.value||0));
@@ -411,6 +411,55 @@ async function saveText(text) {
     }
     cracks.push({segments:segs});
   }
+  function addHole(x, y) {
+    holes.push({
+      x, y,
+      r: 5 + Math.random() * 9,         // クレーター半径
+      age: 0,
+      life: 60 + (Math.random() * 40|0) // だいたい1～1.6秒くらいで薄れる（60fps想定）
+      });
+  }
+      
+      /**
+      * カーソル周囲に円形（半径r）でランダムに複数の着弾をばら撒く
+      * @param {number} cx 中心x（キャレット）
+      * @param {number} cy 中心y（キャレット）
+      * @param {object} opts { count, radius, jitter }
+      */
+  function spawnCrackRing(cx, cy, opts = {}) {
+    if (!toggleFx.checked) return;
+    
+    const I = Math.max(0, Math.min(100, +intensityEl.value || 0));     // UIの「エフェクト大きさ」
+    const level = window.__lastSpeedLevel || 'none';
+    
+    // 着弾数：強度と速度で増やす
+    const count = opts.count ?? ( (level === 'bad' ? 5 : 3) + Math.floor(2 + I / 35) );
+    
+    // 基準半径：強度と速度で変化
+    const rBase = opts.radius ?? (26 + I * 1.3 + (level === 'bad' ? 12 : 0));
+    const jitter = opts.jitter ?? (rBase * 0.4); // 半径のバラつき
+    
+    for (let i = 0; i < count; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const r   = Math.max(8, rBase + (Math.random() * 2 - 1) * jitter);
+      const x   = cx + Math.cos(ang) * r;
+      const y   = cy + Math.sin(ang) * r;
+      
+      spawnCrack(x, y);   // 既存のひび割れ発生
+      addHole(x, y);      // 小クレーター
+      
+      // 小さめのフラッシュ（眩しすぎると感じたらこの行を消してOK）
+      if (Math.random() < 0.85) {
+        flashes.push({
+          x, y,
+          age: 0,
+          life: 14,
+          size: 70 * Math.max(0.5, (+intensityEl.value) / 100)
+        });
+      }
+    }
+  }
+      
   function drawCracks(){
     ctx.clearRect(0,0,innerWidth,innerHeight);
     for(let c=cracks.length-1;c>=0;c--){
@@ -424,6 +473,24 @@ async function saveText(text) {
         ctx.globalAlpha=1;
       }
       if(allDead) cracks.splice(c,1);
+    }
+    for (let i = holes.length - 1; i >= 0; i--) {
+      const h = holes[i];
+      h.age = (h.age || 0) + 1;
+      const t = Math.min(1, h.age / h.life);
+      const alpha = (1 - t) * 0.75;       // だんだん薄く
+      const r = h.r * (0.9 + 0.25 * t);   // ほんの少し広がる
+      
+      const grd = ctx.createRadialGradient(h.x, h.y, 0, h.x, h.y, r);
+      grd.addColorStop(0.0, `rgba(0,0,0,${0.70 * alpha})`);
+      grd.addColorStop(0.5, `rgba(20,20,20,${0.45 * alpha})`);
+      grd.addColorStop(1.0, `rgba(0,0,0,0)`);
+      
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = grd;
+      ctx.beginPath(); ctx.arc(h.x, h.y, r, 0, Math.PI * 2); ctx.fill();
+      
+      if (h.age >= h.life) holes.splice(i, 1);
     }
     for(let i=flashes.length-1;i>=0;i--){
       const f=flashes[i]; f.age=(f.age||0)+1; const t=f.age/f.life, alpha=(1-t)*(1-t), r=f.size*(0.7+0.6*t);
@@ -573,8 +640,8 @@ async function saveText(text) {
       const cutoff=now-ROLL_MS;
       while(cDeltaBuf.length&&cDeltaBuf[0].t<cutoff){cDeltaBuf.shift();}
       lastInputAt=now;
-      const p=caretClientPoint(); 
-      spawnCrack(p.x,p.y);
+      const p = caretClientPoint();
+      spawnCrackRing(p.x, p.y);
       if(window.__lastSpeedLevel==='bad'){
         flashes.push({x:p.x,y:p.y,age:0,life:36,size:240*(Math.max(0.6,(+intensityEl.value)/100))});
       } else if(window.__lastSpeedLevel==='warn'){
@@ -591,7 +658,7 @@ async function saveText(text) {
 
   function crackAtCaret(){
     const jamP=Math.max(0,Math.min(1,(+jamEl.value||0)/100)); if(Math.random()<jamP) return;
-    const p=caretClientPoint(); spawnCrack(p.x,p.y);
+    const p = caretClientPoint();spawnCrackRing(p.x, p.y);
     if(window.__lastSpeedLevel==='bad'){flashes.push({x:p.x,y:p.y,age:0,life:36,size:240*(Math.max(0.6,(+intensityEl.value)/100))});}
     else if(window.__lastSpeedLevel==='warn'){flashes.push({x:p.x,y:p.y,age:0,life:22,size:160*(Math.max(0.6,(+intensityEl.value)/100))});}
     playGunshot();
