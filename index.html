@@ -560,6 +560,37 @@ function refreshUI(){ ival.textContent=intensityEl.value; sval.textContent=sound
   requestAnimationFrame(drawCracks);
 
   // Audio
+  // ======== Audio Samples (MP3) =========
+// GitHub Pages のプロジェクトサイトなので相対パスでOK（./sounds/～）
+let gunshotSampleUrls = [
+  './sounds/9mm-pistol-shoot-short-reverb-7152.mp3',
+  './sounds/9mm-pistol-shot-6349.mp3',
+  './sounds/gunshot-352466.mp3',
+  './sounds/pistol-shot-233473.mp3'
+];
+
+let gunshotBuffers = [];   // AudioBuffer[]
+let gunshotReady = false;
+
+async function loadGunshotSamples() {
+  if (!audioCtx) return;         // AudioContextがまだなら後で再挑戦
+  if (gunshotReady) return;      // 既にロード済みならスキップ
+  try {
+    const decodes = await Promise.all(
+      gunshotSampleUrls.map(async (url) => {
+        const res = await fetch(url, { cache: 'force-cache' });
+        const arr = await res.arrayBuffer();
+        return await audioCtx.decodeAudioData(arr);
+      })
+    );
+    gunshotBuffers = decodes.filter(Boolean);
+    gunshotReady = gunshotBuffers.length > 0;
+    console.log('[gunshots] loaded', gunshotBuffers.length);
+  } catch (e) {
+    console.warn('[gunshots] load failed', e);
+    gunshotReady = false;
+  }
+}
   let audioCtx=null, noiseBuf=null, irs=null;
   function buildAudioAssets(){
     const a=audioCtx; if(!a) return; const sr=a.sampleRate;
