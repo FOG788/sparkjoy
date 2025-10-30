@@ -673,6 +673,39 @@ async function loadGunshotSamples() {
     if(!toggleSound.checked) return; ensureAudio(); resumeAudio();
     const a=audioCtx, now=a.currentTime, UIvol=(+soundVolEl.value/100);
     const R=Math.max(0,Math.min(1,(+realismEl.value||0)/100)), RV=Math.max(0,Math.min(1,(+reverbEl.value||0)/100));
+      // === ここから追加：実サンプルを優先再生 ===
+  if (gunshotReady && gunshotBuffers.length) {
+    const buf = gunshotBuffers[(Math.random()*gunshotBuffers.length)|0];
+    const src = a.createBufferSource(); src.buffer = buf;
+    src.playbackRate.setValueAtTime(0.96 + Math.random()*0.08, now); // 微ピッチ
+    const pan = a.createStereoPanner ? a.createStereoPanner() : null;
+    if (pan) {
+      const p=(lastCaret.x/innerWidth-0.5)*1.6;
+      pan.pan.setValueAtTime(Math.max(-1,Math.min(1,p)), now);
+    }
+    const conv = a.createConvolver(); conv.buffer = irs ? irs.hall : null;
+    const dry = a.createGain(); const wet = a.createGain();
+    const wetMix = Math.min(1, (0.15 + 0.85*RV) * (0.3 + 0.7*R));
+    dry.gain.setValueAtTime(1, now); wet.gain.setValueAtTime(wetMix, now);
+
+    const comp=a.createDynamicsCompressor();
+    comp.threshold.setValueAtTime(-28+(-8*R),now);
+    comp.knee.setValueAtTime(18+8*R,now);
+    comp.ratio.setValueAtTime(2.5+3*R,now);
+    comp.attack.setValueAtTime(0.003-0.001*R,now);
+    comp.release.setValueAtTime(0.18-0.05*R,now);
+
+    const out=a.createGain(); out.gain.setValueAtTime(UIvol, now);
+
+    if (pan){ src.connect(pan); pan.connect(dry); pan.connect(conv); }
+    else { src.connect(dry); src.connect(conv); }
+    conv.connect(wet);
+    dry.connect(comp); wet.connect(comp); comp.connect(out).connect(a.destination);
+
+    src.start(now);
+    return; // ここで終了。以下の合成ロジックはフォールバック
+  }
+  // === ここまで追加 ===
     const v=window.__gunVariants[Math.floor(Math.random()*window.__gunVariants.length)];
     const m=mapWPM(getWPM());
     const crackDur=Math.max(0.03,Math.min(0.2, v.crackDur*(1.4-0.7*R))) * m.durMul;
