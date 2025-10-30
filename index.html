@@ -603,6 +603,8 @@ async function loadGunshotSamples() {
       return buf;
     }
     irs={room:makeIR(0.35,8), hall:makeIR(1.10,3.3), plate:makeIR(0.70,6)};
+    // ★ 実サンプルをプリロード
+    loadGunshotSamples();
   }
   function ensureAudio(){ if(!audioCtx){ const AC=window.AudioContext||window.webkitAudioContext; audioCtx=new AC(); buildAudioAssets(); } }
   function resumeAudio(){ try{ if(audioCtx && audioCtx.state==='suspended') audioCtx.resume(); }catch(_){} }
