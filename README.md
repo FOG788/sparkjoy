@@ -16,7 +16,7 @@ python -m http.server 4173 --bind 0.0.0.0
 このリポジトリには `.github/workflows/deploy-pages.yml` を追加済みです。
 
 - `main` に push すると自動で GitHub Pages にデプロイされます。
-- PR (`pull_request`) でも **同一リポジトリ内ブランチ** であれば、検証後に Pages デプロイを実行します（マージ前確認用）。
+- PR では検証（`pull_request`）に加えて、同一リポジトリ内ブランチなら `pull_request_target` 実行で Pages プレビューをデプロイします（マージ前確認用）。
 - フォークからの PR は権限制約のため、PR デプロイはスキップされます。
 - 手動実行したい場合は、Actions タブから **Deploy static site to GitHub Pages** を `workflow_dispatch` で実行できます。
 
@@ -40,3 +40,4 @@ python -m http.server 4173 --bind 0.0.0.0
 - リポジトリで **Actions が無効**だと表示されません（Settings > Actions を確認）。
 - フォーク先では Actions 制限で実行されないことがあります。
 - `workflow_dispatch` は、workflow ファイルが GitHub 側で認識されるまで少し時間がかかる場合があります。
+- `refs/pull/*/merge is not allowed to deploy` エラーが出る場合は、`pull_request_target` 側の実行結果で確認してください（同一リポジトリPRのみ対象）。
