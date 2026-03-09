@@ -29,3 +29,12 @@ python -m http.server 4173 --bind 0.0.0.0
 
 - これは静的配信なので、ビルド手順は不要です。
 - `sounds/` 配下もそのまま配信されます。
+
+
+## トラブルシュート（「Deploy static site to GitHub Pages」が見つからない）
+
+- **未マージのブランチだけに workflow がある**場合、Actions 一覧に出ないことがあります。
+  - この場合は PR を作ると `pull_request` トリガーで実行され、PR の Checks から確認できます。
+- リポジトリで **Actions が無効**だと表示されません（Settings > Actions を確認）。
+- フォーク先では Actions 制限で実行されないことがあります。
+- `workflow_dispatch` は、workflow ファイルが GitHub 側で認識されるまで少し時間がかかる場合があります。
