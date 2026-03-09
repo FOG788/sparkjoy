@@ -42,6 +42,7 @@
       <span id="idleChip" class="chip"><label>停止比</label><span id="idlePct">0%</span></span>
       <span class="chip"><label>ハイスコア</label><span id="bestTime">00:00</span></span>
       <button id="resetSessionBtn" class="btn ghost" type="button">セッションリセット</button>
+      <button id="resetHighscoreBtn" class="btn ghost" type="button">ハイスコアリセット</button>
     </div>
 
     <div id="settingsBar" class="bar">
@@ -98,6 +99,7 @@
   <section id="guidePanel" class="card" aria-label="説明書">
     <h2>SparkJoy 説明書</h2>
     <p class="muted">指標の意味と設定の使い方を、迷いやすい項目中心にまとめています。</p>
+    <p><strong>エディター版</strong>：<span id="editorVersion">-</span></p>
 
     <h3>ステータス表示（上部バー）</h3>
     <ul>
@@ -109,6 +111,7 @@
       <li><strong>停止比</strong>：入力していない時間の割合です。高いほど「手が止まっている」状態です。</li>
       <li><strong>ハイスコア</strong>：過去の最長継続時間です。</li>
       <li><strong>セッションリセット</strong>：経過時間・平均値などを現在の内容のまま初期化します。</li>
+      <li><strong>ハイスコアリセット</strong>：保存されている最長継続時間（ハイスコア）を 00:00 に戻します。</li>
     </ul>
 
     <h3>設定項目（設定タブ）</h3>
