@@ -63,7 +63,7 @@ window.makeFilename = makeFilename; // 念のため外にも公開
   const intensityEl=$('intensity'), ival=$('ival'), toggleFx=$('toggleFx'), toggleSound=$('toggleSound');
   const soundVolEl=$('soundVol'), sval=$('sval'), realismEl=$('realism'), rval=$('rval'), reverbEl=$('reverb'), revval=$('revval');
   const jamEl=$('jam'), jamval=$('jamval');
-  const charCountEl=$('charCount'), elapsedEl=$('elapsed'), cpmEl=$('cpm'), wpmAvgEl=$('wpmAvg'), modeSel=$('mode');
+  const charCountEl=$('charCount'), wordCountEl=$('wordCount'), elapsedEl=$('elapsed'), cpmEl=$('cpm'), wpmAvgEl=$('wpmAvg'), modeSel=$('mode');
   const idlePctEl=$('idlePct'), idleChip=$('idleChip'), bestTimeEl=$('bestTime'), resetSessionBtn=$('resetSessionBtn'), resetHighscoreBtn=$('resetHighscoreBtn');
   const editorVersionEl=$('editorVersion');
   const aura=$('aura'), canvas=$('fx'), ctx=canvas.getContext('2d');
@@ -96,14 +96,39 @@ window.makeFilename = makeFilename; // 念のため外にも公開
 
   // Storage helpers
   const LS={high:'sj_highscore_sec',auto:'sj_auto_reset_sec',warn:'sj_warn_cpm',bad:'sj_bad_cpm',warm:'sj_warmup_sec',fs:'sj_font_px'};
+  const CK={
+    auto:'sj_auto_reset_sec',warn:'sj_warn_cpm',bad:'sj_bad_cpm',warm:'sj_warmup_sec',fs:'sj_font_px',
+    mode:'sj_mode',intensity:'sj_intensity',fx:'sj_fx',sound:'sj_sound',soundVol:'sj_sound_vol',
+    realism:'sj_realism',reverb:'sj_reverb',jam:'sj_jam'
+  };
+  const setCookie=(name,value,days=400)=>{
+    try{
+      const d=new Date(Date.now()+days*24*60*60*1000);
+      document.cookie=`${encodeURIComponent(name)}=${encodeURIComponent(String(value))}; expires=${d.toUTCString()}; path=/; SameSite=Lax`;
+    }catch(_){ }
+  };
+  const getCookie=(name)=>{
+    try{
+      const target=`${encodeURIComponent(name)}=`;
+      const hit=String(document.cookie||'').split('; ').find(c=>c.startsWith(target));
+      return hit ? decodeURIComponent(hit.slice(target.length)) : null;
+    }catch(_){ return null; }
+  };
   const loadNum=(k,def)=>{try{const v=parseInt(localStorage.getItem(k)||String(def),10);return isNaN(v)?def:v}catch(_){return def}};
   const saveNum=(k,v)=>{try{localStorage.setItem(k,String(v))}catch(_){ }};
   const loadHigh=()=>loadNum(LS.high,0), saveHigh=(s)=>saveNum(LS.high,Math.max(0,Math.floor(s)));
-  const loadAuto=()=>loadNum(LS.auto,180), saveAuto=(s)=>saveNum(LS.auto,s);
-  const loadWarn=()=>loadNum(LS.warn,75),  saveWarn=(v)=>saveNum(LS.warn,v);
-  const loadBad =()=>loadNum(LS.bad,110),  saveBad =(v)=>saveNum(LS.bad,v);
-  const loadWarm=()=>loadNum(LS.warm,12),   saveWarm=(v)=>saveNum(LS.warm,v);
-  const loadFs  =()=>loadNum(LS.fs,16),     saveFs  =(v)=>saveNum(LS.fs,v);
+  const loadNumWithCookie=(storageKey,cookieKey,def)=>{
+    const cv=parseInt(getCookie(cookieKey)||'',10);
+    if(!isNaN(cv)) return cv;
+    return loadNum(storageKey,def);
+  };
+  const saveNumWithCookie=(storageKey,cookieKey,v)=>{ saveNum(storageKey,v); setCookie(cookieKey,v); };
+  const loadAuto=()=>loadNumWithCookie(LS.auto,CK.auto,180), saveAuto=(s)=>saveNumWithCookie(LS.auto,CK.auto,s);
+  const loadWarn=()=>loadNumWithCookie(LS.warn,CK.warn,75),  saveWarn=(v)=>saveNumWithCookie(LS.warn,CK.warn,v);
+  const loadBad =()=>loadNumWithCookie(LS.bad,CK.bad,110),  saveBad =(v)=>saveNumWithCookie(LS.bad,CK.bad,v);
+  const loadWarm=()=>loadNumWithCookie(LS.warm,CK.warm,12),   saveWarm=(v)=>saveNumWithCookie(LS.warm,CK.warm,v);
+  const loadFs  =()=>loadNumWithCookie(LS.fs,CK.fs,16),     saveFs  =(v)=>saveNumWithCookie(LS.fs,CK.fs,v);
+  const loadChoice=(key,def)=>getCookie(key) ?? def;
 
   function applyFont(px){
     const v = Math.max(10, Math.min(40, +px||16));
@@ -114,9 +139,24 @@ window.makeFilename = makeFilename; // 念のため外にも公開
   
   warnEl.value=String(loadWarn()); badEl.value=String(loadBad()); warmupEl.value=String(loadWarm());
   if (fontEl) fontEl.value = String(loadFs());
+  if (modeSel) modeSel.value = loadChoice(CK.mode, modeSel.value || 'write');
+  intensityEl.value = loadChoice(CK.intensity, intensityEl.value);
+  toggleFx.checked = loadChoice(CK.fx, toggleFx.checked ? '1' : '0') === '1';
+  toggleSound.checked = loadChoice(CK.sound, toggleSound.checked ? '1' : '0') === '1';
+  soundVolEl.value = loadChoice(CK.soundVol, soundVolEl.value);
+  realismEl.value = loadChoice(CK.realism, realismEl.value);
+  reverbEl.value = loadChoice(CK.reverb, reverbEl.value);
+  jamEl.value = loadChoice(CK.jam, jamEl.value);
       
 function refreshUI(){ ival.textContent=intensityEl.value; sval.textContent=soundVolEl.value; rval.textContent=realismEl.value; revval.textContent=reverbEl.value; jamval.textContent=jamEl.value; warnVal.textContent=warnEl.value; badVal.textContent=badEl.value; warmVal.textContent=warmupEl.value+'s'; if(fontEl&&fsVal) fsVal.textContent=fontEl.value+'px'; }
       ;[intensityEl,soundVolEl,realismEl,reverbEl,jamEl].forEach(el=>el.addEventListener('input',refreshUI));
+      intensityEl.addEventListener('change',()=>setCookie(CK.intensity,intensityEl.value));
+      toggleFx.addEventListener('change',()=>setCookie(CK.fx,toggleFx.checked?'1':'0'));
+      toggleSound.addEventListener('change',()=>setCookie(CK.sound,toggleSound.checked?'1':'0'));
+      soundVolEl.addEventListener('change',()=>setCookie(CK.soundVol,soundVolEl.value));
+      realismEl.addEventListener('change',()=>setCookie(CK.realism,realismEl.value));
+      reverbEl.addEventListener('change',()=>setCookie(CK.reverb,reverbEl.value));
+      jamEl.addEventListener('change',()=>setCookie(CK.jam,jamEl.value));
       fontEl && fontEl.addEventListener('input', ()=>{
         applyFont(fontEl.value);
         saveFs(+fontEl.value||16);
@@ -177,6 +217,7 @@ function refreshUI(){ ival.textContent=intensityEl.value; sval.textContent=sound
 
   function updateStats(){
     const text=sanitizeText(editor.innerText||''); const totalLen=text.length; if(charCountEl) charCountEl.textContent=String(totalLen);
+    const totalWords=text.trim()?text.trim().split(/\s+/).length:0; if(wordCountEl) wordCountEl.textContent=String(totalWords);
     const now=performance.now(); if(typingStart && autoResetSec>0 && (now-lastInputAt)>autoResetSec*1000){ endSession('idle'); }
     if(!typingStart){ elapsedEl&&(elapsedEl.textContent='00:00'); cpmEl&&(cpmEl.textContent='0'); wpmAvgEl&&(wpmAvgEl.textContent='0'); idlePctEl&&(idlePctEl.textContent='0%'); setChipClass(idleChip,null); setChipClass(cpmEl&&cpmEl.parentElement,null); return; }
     const elapsed=(now-typingStart)/1000; elapsedEl&&(elapsedEl.textContent=formatTime(elapsed));
@@ -578,7 +619,7 @@ async function loadGunshotSamples() {
     scheduleTW();
   }
   editor.addEventListener('input', onInput);
-  modeSel && modeSel.addEventListener('change', updateStats);
+  modeSel && modeSel.addEventListener('change', ()=>{ setCookie(CK.mode,modeSel.value); updateStats(); });
   editor.addEventListener('focus',()=>{
     lastCaret=caretClientPoint();
     scheduleTW();
