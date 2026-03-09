@@ -18,26 +18,6 @@ async function saveWithPicker(text, fname){
   }
 }
 
-function isStandalone() {
-  // iOS Safari: navigator.standalone, それ以外: display-mode
-  return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
-         || (typeof navigator !== 'undefined' && (navigator.standalone === true));
-}
-
-async function tryShareFile(text, filename) {
-  if (!navigator.share) return false;
-  try {
-    const file = new File([text], filename, { type: 'text/plain' });
-    if (!navigator.canShare || navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file], title: filename });
-      toast('共有を開きました'); 
-      return true;
-    }
-  } catch (e) {
-    // ユーザーが閉じた等は静かに無視
-  }
-  return false;
-}
 
 // 環境判定（iOS / standalone）
 function isIOS() {
@@ -64,20 +44,6 @@ function forceDownload(text, filename) {
 }
 
 
-// iOS を含む全プラットフォーム共通：Blob を a[download] で一発ダウンロード
-function downloadViaAnchor(text, filename){
-  const blob = new Blob([text], { type: 'application/octet-stream' }); // 強制DL
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename; a.rel = 'noopener';
-  document.body.appendChild(a);
-  a.click(); // 1回だけ
-  setTimeout(()=>{ try{URL.revokeObjectURL(url);}catch(_){} try{document.body.removeChild(a);}catch(_){} },0);
-}
-
-
-
-
 /* すでに toast があれば何もしない。無ければグローバルに定義 */
 // ---- トースト（グローバル） ----
 window.toast ||= function (msg) {
@@ -95,43 +61,6 @@ function makeFilename(){
 }
 window.makeFilename = makeFilename; // 念のため外にも公開
 
-// 共有シートやパネルに逃げず、iPadでも必ずダウンロードを試みる保存フロー
-async function saveText(text) {
-  const fname = makeFilename();
-
-  if (isIOS()) {
-    // iOS はユーザー操作直後の同期で a.click() するのが最も確実
-    forceDownload(text, fname);
-    toast('ダウンロードを開始しました');
-    return true;
-  }
-
-  if (window.showSaveFilePicker) {
-    try {
-      const handle = await window.showSaveFilePicker({
-        suggestedName: fname,
-        types: [{ description: 'Text', accept: { 'text/plain': ['.txt'] } }]
-      });
-      const w = await handle.createWritable();
-      await w.write(new Blob([text], { type: 'text/plain;charset=utf-8' }));
-      await w.close();
-      toast('保存しました');
-      return true;
-    } catch (e) {
-      // ユーザーキャンセルは何もしない（二重DL防止）
-      if (e && (e.name === 'AbortError' || e.code === 20)) {
-        toast('保存をキャンセルしました');
-        return false;
-      }
-      // それ以外のエラーのみ、1回だけDLにフォールバック
-    }
-  }
-  forceDownload(text, fname);
-  toast('ダウンロードを開始しました');
-  return true;
-}
-
-
 
 (()=>{'use strict';
 
@@ -140,7 +69,7 @@ async function saveText(text) {
   const fontEl=$('fontSize'), fsVal=$('fsVal');
   const intensityEl=$('intensity'), ival=$('ival'), toggleFx=$('toggleFx'), toggleSound=$('toggleSound');
   const soundVolEl=$('soundVol'), sval=$('sval'), realismEl=$('realism'), rval=$('rval'), reverbEl=$('reverb'), revval=$('revval');
-  const jamEl=$('jam'), jamval=$('jamval'), presetSel=$('preset');
+  const jamEl=$('jam'), jamval=$('jamval');
   const charCountEl=$('charCount'), elapsedEl=$('elapsed'), cpmEl=$('cpm'), wpmAvgEl=$('wpmAvg'), modeSel=$('mode');
   const idlePctEl=$('idlePct'), idleChip=$('idleChip'), bestTimeEl=$('bestTime'), resetSessionBtn=$('resetSessionBtn');
   const aura=$('aura'), canvas=$('fx'), ctx=canvas.getContext('2d');
@@ -187,7 +116,6 @@ function refreshUI(){ ival.textContent=intensityEl.value; sval.textContent=sound
   warnEl.addEventListener('input',()=>{refreshUI();saveWarn(warnEl.value)});
   badEl .addEventListener('input',()=>{refreshUI();saveBad (badEl.value)});
   warmupEl.addEventListener('input',()=>{refreshUI();saveWarm(warmupEl.value)});
-  function markCustom(){try{if(presetSel) presetSel.value='custom';}catch(_){}}; [intensityEl,soundVolEl,realismEl,reverbEl,jamEl,warnEl,badEl,warmupEl,toggleFx,toggleSound,fontEl].forEach(el=>el&&el.addEventListener(('input'in el)?'input':'change',markCustom));
   refreshUI();
 
   // Stats
@@ -712,27 +640,9 @@ async function loadGunshotSamples() {
       });
   
   // ---- Utils / Save / Clear ----
-  function toast(msg){ try{ const t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),1400);}catch(_){} }
-  function sanitizeText(t){ return String(t||'').replace(/[​﻿]/g,''); }
-  const IN_CANVAS=(function(){ try{ return self!==top; }catch(_){ return true; } })();
 
-  function showSavePanel(text,filename){
-    const overlay=document.createElement('div'); overlay.className='overlay';
-    const box=document.createElement('div'); box.className='modal';
-    const title=document.createElement('div'); title.textContent='保存'; title.style.cssText='font-weight:600;margin-bottom:8px';
-    const note=document.createElement('div'); note.className='muted'; note.textContent='自動ダウンロードが制限されました。以下の方法で保存できます。';
-    const area=document.createElement('div'); area.style.cssText='display:flex;flex-direction:column;gap:8px;margin:12px 0';
-    try{ const blob=new Blob([text],{type:'text/plain;charset=utf-8'}); const url=URL.createObjectURL(blob);
-      const a=document.createElement('a'); a.className='btn'; a.textContent='保存(.txt)'; a.href=url; a.download=filename; a.rel='noopener'; area.appendChild(a);
-      overlay.addEventListener('click',(e)=>{ if(e.target===overlay){ try{URL.revokeObjectURL(url);}catch(_){ } document.body.removeChild(overlay);} });
-    }catch(_){}
-    const d=document.createElement('a'); d.className='btn'; d.textContent='新規タブで開く（Ctrl/Cmd+S）'; d.href='data:text/plain;charset=utf-8,'+encodeURIComponent(text); d.target='_blank'; d.rel='noopener'; area.appendChild(d);
-    const ta=document.createElement('textarea'); ta.value=text; ta.rows=10; ta.style.cssText='width:min(80vw,680px);max-width:90vw;background:#0b0f14;color:#e6ecf3;border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:8px';
-    const copyBtn=document.createElement('button'); copyBtn.className='btn'; copyBtn.textContent='全選択してコピー';
-    copyBtn.addEventListener('click', async()=>{ try{ await navigator.clipboard.writeText(text); toast('コピーしました'); }catch(_){ try{ ta.focus(); ta.select(); document.execCommand('copy'); toast('コピーしました'); }catch(_){ toast('コピーできませんでした'); } } });
-    const close=document.createElement('button'); close.className='btn'; close.textContent='閉じる'; close.style.alignSelf='flex-end'; close.addEventListener('click',()=>{ document.body.removeChild(overlay); });
-    area.appendChild(ta); area.appendChild(copyBtn); box.appendChild(title); box.appendChild(note); box.appendChild(area); box.appendChild(close); overlay.appendChild(box); document.body.appendChild(overlay);
-  }
+  function sanitizeText(t){ return String(t||'').replace(/[​﻿]/g,''); }
+
   function showSaveFallback(text,filename){
     const overlay=document.createElement('div'); overlay.className='overlay';
     const box=document.createElement('div'); box.className='modal';
@@ -746,29 +656,6 @@ async function loadGunshotSamples() {
     const close=document.createElement('button'); close.className='btn'; close.textContent='閉じる'; close.addEventListener('click',()=>{ document.body.removeChild(overlay); });
     box.appendChild(msg); box.appendChild(area); overlay.appendChild(box); document.body.appendChild(overlay); toast('保存リンクを表示しました');
   }
-// ---- ファイル名 ----
-
-  async function saveNow(text){
-    const filename=makeFilename();
-    if(window.showSaveFilePicker){ try{
-      const blob=new Blob([text],{type:'text/plain;charset=utf-8'});
-      const handle=await window.showSaveFilePicker({suggestedName:filename,types:[{description:'Text',accept:{'text/plain':['.txt']}}]});
-      const w=await handle.createWritable(); await w.write(blob); await w.close(); toast('保存しました'); return true;
-    }catch(e){ /* continue */ } }
-    try{
-      const blob=new Blob([text],{type:'text/plain;charset=utf-8'});
-      if(navigator && 'msSaveOrOpenBlob' in navigator){ /* IE */ // @ts-ignore
-        navigator.msSaveOrOpenBlob(blob, filename); toast('保存処理を開始しました'); return true;
-      }
-      const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=filename; a.rel='noopener';
-      document.body.appendChild(a); a.click(); try{ a.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,view:window})); }catch(_){ }
-      setTimeout(()=>{ try{URL.revokeObjectURL(url);}catch(_){ } try{document.body.removeChild(a)}catch(_){ } }, 0);
-      return true;
-    }catch(_){}
-    try{ const ok=window.open('data:text/plain;charset=utf-8,'+encodeURIComponent(text),'_blank'); if(ok){ toast('新規タブを開きました（Ctrl/Cmd+S で保存）'); return true; } }catch(_){}
-    showSaveFallback(text, filename); return false;
-  }
-
 // === 全消去ダイアログ ===
 function askClear(){
   const overlay = document.createElement('div'); overlay.className='overlay';
@@ -800,8 +687,6 @@ function doClear(){
 }
 
 
-
-
 if (saveBtn && !saveBtn.dataset.bound) {
   saveBtn.dataset.bound = '1';
   saveBtn.addEventListener('click', async (ev) => {
@@ -831,9 +716,6 @@ if (saveBtn && !saveBtn.dataset.bound) {
 }
 
 
-
-
-
   // クリア（既存の askClear/doClear をそのまま使用）
   if (clearBtn && !clearBtn.dataset.bound) {
     clearBtn.dataset.bound = '1';
@@ -850,22 +732,3 @@ if (saveBtn && !saveBtn.dataset.bound) {
     }, { passive:true });
   }
 })();
-
-
-
-// ---- 簡易テスト（アンカーが作られるか） ----
-window.__sjSaveSmoke = function(){
-  let created = 0;
-  const orig = document.createElement;
-  document.createElement = function(tag){
-    if (tag === 'a') created++;
-    return orig.call(document, tag);
-  };
-  try {
-    forceDownload('test', makeFilename());
-  } finally {
-    document.createElement = orig;
-  }
-  console.log('[save-smoke] anchors created:', created);
-  return created; // 1 以上ならOK
-};
