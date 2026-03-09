@@ -65,7 +65,7 @@ window.makeFilename = makeFilename; // 念のため外にも公開
 (()=>{'use strict';
 
   const $ = (id)=>document.getElementById(id);
-  const editor=$('editor'), saveBtn=$('saveBtn'), clearBtn=$('clearBtn'), copyBtn=$('copyBtn');
+  const editor=$('editor'), editorWrap=$('editorWrap'), saveBtn=$('saveBtn'), clearBtn=$('clearBtn'), copyBtn=$('copyBtn');
   const fontEl=$('fontSize'), fsVal=$('fsVal');
   const intensityEl=$('intensity'), ival=$('ival'), toggleFx=$('toggleFx'), toggleSound=$('toggleSound');
   const soundVolEl=$('soundVol'), sval=$('sval'), realismEl=$('realism'), rval=$('rval'), reverbEl=$('reverb'), revval=$('revval');
@@ -411,32 +411,51 @@ async function loadGunshotSamples() {
       // === タイプライターモード（中央付近キープ） =========================
       const TYPEWRITER = {
         enabled: true,    // 必要なら設定タブからON/OFFしてもOK
-        center: 0.5,      // 0.5 = 画面ちょうど中央（好みで 0.45 ~ 0.55 など）
-        dead: 60          // 許容帯（px）。外れたときだけスクロール
+        center: 0.5,      // 画面中央付近を維持
+        dead: 24          // 許容帯（px）。狭めて中央キープを強める
           };
       
       let twRaf = 0;
   function keepCaretCentered(){
     if (!TYPEWRITER.enabled) return;
-    // 可視ビューポート（モバイルのキーボード表示にも対応）
+
+    const p = caretClientPoint(); // キャレット位置（viewport座標）
+
+    // レイアウト変更後は editorWrap がスクロール主体。
+    // ここを優先して中央キープし、無い場合のみ window スクロールへフォールバック。
+    if (editorWrap) {
+      const wrapRect = editorWrap.getBoundingClientRect();
+      const target = wrapRect.top + wrapRect.height * TYPEWRITER.center;
+      const bandMin = target - TYPEWRITER.dead;
+      const bandMax = target + TYPEWRITER.dead;
+
+      let dy = 0;
+      if (p.y < bandMin) dy = p.y - bandMin;
+      else if (p.y > bandMax) dy = p.y - bandMax;
+
+      if (dy !== 0) {
+        const maxTop = Math.max(0, editorWrap.scrollHeight - editorWrap.clientHeight);
+        const newTop = Math.max(0, Math.min(maxTop, editorWrap.scrollTop + dy));
+        editorWrap.scrollTop = newTop;
+      }
+      return;
+    }
+
+    // フォールバック（旧レイアウト）
     const vv = window.visualViewport;
     const vTop = vv ? vv.offsetTop : 0;
     const vH   = vv ? vv.height   : window.innerHeight;
     const target = vTop + vH * TYPEWRITER.center;
-    
-    const p = caretClientPoint(); // 既存関数：キャレット位置（viewport座標）
     const bandMin = target - TYPEWRITER.dead;
     const bandMax = target + TYPEWRITER.dead;
-    
+
     let dy = 0;
     if (p.y < bandMin) dy = p.y - bandMin;
     else if (p.y > bandMax) dy = p.y - bandMax;
-    
+
     if (dy !== 0) {
-      // ページスクロールを調整
       const sc = document.scrollingElement || document.documentElement;
       const newTop = Math.max(0, Math.min(sc.scrollHeight - vH, window.scrollY + dy));
-      // 'auto' は即時。'smooth' にすると入力と競合して揺れる場合あり
       window.scrollTo({ top: newTop, behavior: 'auto' });
     }
   }
@@ -444,7 +463,11 @@ async function loadGunshotSamples() {
   function scheduleTW(){
     if (!TYPEWRITER.enabled) return;
     cancelAnimationFrame(twRaf);
-    twRaf = requestAnimationFrame(keepCaretCentered);
+    twRaf = requestAnimationFrame(()=>{
+      keepCaretCentered();
+      // 入力直後のブラウザ自動スクロールを上書きするため、次フレームでも再補正
+      requestAnimationFrame(keepCaretCentered);
+    });
   }
   function playGunshot(){
     if(!toggleSound.checked) return; ensureAudio(); resumeAudio();
@@ -587,6 +610,10 @@ async function loadGunshotSamples() {
     lastCaret=caretClientPoint();
     scheduleTW();
   });
+  document.addEventListener('selectionchange', ()=>{
+    if (document.activeElement===editor) scheduleTW();
+  });
+  editor.addEventListener('keydown', scheduleTW);
       editor.addEventListener('click', scheduleTW);
       editor.addEventListener('keyup', (e)=>{
         if (e.key && /Arrow|PageUp|PageDown|Home|End/.test(e.key)) scheduleTW();
