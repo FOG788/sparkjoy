@@ -65,7 +65,7 @@ window.makeFilename = makeFilename; // 念のため外にも公開
 (()=>{'use strict';
 
   const $ = (id)=>document.getElementById(id);
-  const editor=$('editor'), saveBtn=$('saveBtn'), clearBtn=$('clearBtn'), copyBtn=$('copyBtn');
+  const editor=$('editor'), editorWrap=$('editorWrap'), saveBtn=$('saveBtn'), clearBtn=$('clearBtn'), copyBtn=$('copyBtn');
   const fontEl=$('fontSize'), fsVal=$('fsVal');
   const intensityEl=$('intensity'), ival=$('ival'), toggleFx=$('toggleFx'), toggleSound=$('toggleSound');
   const soundVolEl=$('soundVol'), sval=$('sval'), realismEl=$('realism'), rval=$('rval'), reverbEl=$('reverb'), revval=$('revval');
@@ -418,25 +418,44 @@ async function loadGunshotSamples() {
       let twRaf = 0;
   function keepCaretCentered(){
     if (!TYPEWRITER.enabled) return;
-    // 可視ビューポート（モバイルのキーボード表示にも対応）
+
+    const p = caretClientPoint(); // キャレット位置（viewport座標）
+
+    // レイアウト変更後は editorWrap がスクロール主体。
+    // ここを優先して中央キープし、無い場合のみ window スクロールへフォールバック。
+    if (editorWrap) {
+      const wrapRect = editorWrap.getBoundingClientRect();
+      const target = wrapRect.top + wrapRect.height * TYPEWRITER.center;
+      const bandMin = target - TYPEWRITER.dead;
+      const bandMax = target + TYPEWRITER.dead;
+
+      let dy = 0;
+      if (p.y < bandMin) dy = p.y - bandMin;
+      else if (p.y > bandMax) dy = p.y - bandMax;
+
+      if (dy !== 0) {
+        const maxTop = Math.max(0, editorWrap.scrollHeight - editorWrap.clientHeight);
+        const newTop = Math.max(0, Math.min(maxTop, editorWrap.scrollTop + dy));
+        editorWrap.scrollTop = newTop;
+      }
+      return;
+    }
+
+    // フォールバック（旧レイアウト）
     const vv = window.visualViewport;
     const vTop = vv ? vv.offsetTop : 0;
     const vH   = vv ? vv.height   : window.innerHeight;
     const target = vTop + vH * TYPEWRITER.center;
-    
-    const p = caretClientPoint(); // 既存関数：キャレット位置（viewport座標）
     const bandMin = target - TYPEWRITER.dead;
     const bandMax = target + TYPEWRITER.dead;
-    
+
     let dy = 0;
     if (p.y < bandMin) dy = p.y - bandMin;
     else if (p.y > bandMax) dy = p.y - bandMax;
-    
+
     if (dy !== 0) {
-      // ページスクロールを調整
       const sc = document.scrollingElement || document.documentElement;
       const newTop = Math.max(0, Math.min(sc.scrollHeight - vH, window.scrollY + dy));
-      // 'auto' は即時。'smooth' にすると入力と競合して揺れる場合あり
       window.scrollTo({ top: newTop, behavior: 'auto' });
     }
   }
