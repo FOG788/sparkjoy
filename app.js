@@ -184,7 +184,10 @@ function refreshUI(){ ival.textContent=intensityEl.value; sval.textContent=sound
     const cutoff=now-ROLL_MS; while(cDeltaBuf.length && cDeltaBuf[0].t<cutoff){ cDeltaBuf.shift(); }
     let sum=0; for(const s of cDeltaBuf){ sum+=s.c; }
     const spanSec=Math.max(1, Math.min(ROLL_MS/1000, elapsed)); const cpm=Math.round(sum*60/spanSec);
-    cpmEl&&(cpmEl.textContent=String(cpm)); wpmAvgEl&&(wpmAvgEl.textContent=String(Math.round((sum/5)*60/spanSec)));
+    const sessionChars=Math.max(0, totalLen-baseChars);
+    const avgWpm=Math.round((sessionChars/5)*60/Math.max(1, elapsed));
+    cpmEl&&(cpmEl.textContent=String(cpm));
+    wpmAvgEl&&(wpmAvgEl.textContent=String(avgWpm));
     const activeNow=(now-lastInputAt)<ACTIVE_MS; activityBuf[activityIdx]=activeNow; activityIdx=(activityIdx+1)%IDLE_WINDOW;
     let act=0; for(const b of activityBuf){ if(b) act++; } const idlePct=Math.round((1-act/activityBuf.length)*100);
     idlePctEl&&(idlePctEl.textContent=idlePct+'%');
