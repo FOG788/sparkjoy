@@ -33,9 +33,17 @@
     @keyframes shakeStrong{0%{transform:translate(0,0) rotate(0)}15%{transform:translate(-6px,-2px) rotate(-.45deg)}35%{transform:translate(6px,2px) rotate(.45deg)}55%{transform:translate(-7px,0) rotate(-.5deg)}75%{transform:translate(7px,0) rotate(.5deg)}100%{transform:translate(0,0) rotate(0)}}
     body.shake-warn{animation:shakeWeak .28s linear 1}
     body.shake-bad{animation:shakeStrong .45s linear 1}
+
+    #guidePanel{display:none; margin:0 12px 12px; padding:16px}
+    #guidePanel h2,#guidePanel h3{margin:0 0 10px}
+    #guidePanel ul{margin:0 0 16px 1.2em; padding:0}
+    #guidePanel li{margin-bottom:6px}
     #settingsBar{display:none}
     body.tab-settings #settingsBar{display:flex}
     body.tab-settings #statsBar{display:none}
+    body.tab-guide #toolbar,
+    body.tab-guide #editorWrap{display:none}
+    body.tab-guide #guidePanel{display:block}
     @media (display-mode: standalone) { header { padding-top: calc(env(safe-area-inset-top) + 6px); } }
     /* ==== タイプライターモード用スペーサ ==== */
     :root{
