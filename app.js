@@ -411,7 +411,7 @@ async function loadGunshotSamples() {
       // === タイプライターモード（中央付近キープ） =========================
       const TYPEWRITER = {
         enabled: true,    // 必要なら設定タブからON/OFFしてもOK
-        center: 0.5,      // 0.5 = 画面ちょうど中央（好みで 0.45 ~ 0.55 など）
+        center: 0.46,     // 少し上寄りに維持（下がって見える体感を補正）
         dead: 60          // 許容帯（px）。外れたときだけスクロール
           };
       
