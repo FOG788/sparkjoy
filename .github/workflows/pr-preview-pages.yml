@@ -1,34 +1,24 @@
-name: Deploy static site to GitHub Pages
+name: PR preview deploy to GitHub Pages
 
 on:
-  push:
+  pull_request_target:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
-  workflow_dispatch:
+    types:
+      - opened
+      - synchronize
+      - reopened
 
 permissions:
   contents: read
 
 concurrency:
-  group: pages
-  cancel-in-progress: false
+  group: pages-pr-preview
+  cancel-in-progress: true
 
 jobs:
-  validate:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Validate JavaScript syntax
-        run: node --check app.js
-
-  deploy:
-    if: github.event_name != 'pull_request'
-    needs: validate
+  deploy_pr_preview:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     permissions:
       contents: read
       pages: write
@@ -38,8 +28,10 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout PR head
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
@@ -49,6 +41,6 @@ jobs:
         with:
           path: .
 
-      - name: Deploy to GitHub Pages
+      - name: Deploy PR preview to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
