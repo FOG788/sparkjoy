@@ -2,45 +2,14 @@
 
 静的サイトとして動作するエディタです（`index.html` + `app.js` + `styles.css`）。
 
-## ブランチの変更を試す方法
-
-### 1) ローカルで今のブランチを試す
+## ローカルで試す
 
 ```bash
 python -m http.server 4173 --bind 0.0.0.0
 # ブラウザで http://localhost:4173/index.html
 ```
 
-### 2) GitHub Pages で公開して試す
-
-このリポジトリには以下の workflow を追加済みです。
-
-- `.github/workflows/deploy-pages.yml`（main / 手動実行向け）
-- `.github/workflows/pr-preview-pages.yml`（手動プレビュー向け）
-
-- `main` に push すると自動で GitHub Pages にデプロイされます。
-- PR では `deploy-pages.yml` は検証のみ実行します（デプロイはしません）。
-- マージ前プレビューは `pr-preview-pages.yml` を手動実行し、`ref` にPRブランチ名（例: `codex/add-help-tab-with-instructions`）を指定してください。
-- 手動実行したい場合は、Actions タブから `workflow_dispatch` を実行できます。
-
-#### 初回だけ必要な設定
-
-1. GitHub リポジトリの **Settings > Pages** を開く
-2. **Build and deployment** の Source を **GitHub Actions** にする
-
-デプロイ成功後、Actions の実行ログに公開URLが表示されます。
-
 ## 補足
 
 - これは静的配信なので、ビルド手順は不要です。
 - `sounds/` 配下もそのまま配信されます。
-
-
-## トラブルシュート（「Deploy static site to GitHub Pages」が見つからない）
-
-- **未マージのブランチだけに workflow がある**場合、Actions 一覧に出ないことがあります。
-  - この場合は PR では `deploy-pages.yml` の検証結果を確認し、必要なら `pr-preview-pages.yml` を手動実行してください。
-- リポジトリで **Actions が無効**だと表示されません（Settings > Actions を確認）。
-- フォーク先では Actions 制限で実行されないことがあります。
-- `workflow_dispatch` は、workflow ファイルが GitHub 側で認識されるまで少し時間がかかる場合があります。
-- `Run workflow` が表示されない場合は、リポジトリ権限（Write以上）と Actions 設定を確認してください。

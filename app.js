@@ -19,13 +19,6 @@ async function saveWithPicker(text, fname){
 }
 
 
-// 環境判定（iOS / standalone）
-function isIOS() {
-  const ua = navigator.userAgent || '';
-  const iDevice = /iPad|iPhone|iPod/.test(ua);
-  const iPadOS  = (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  return iDevice || iPadOS;
-}
 // ---- a[download] で即時ダウンロード（同期タスク内で実行）----
 function forceDownload(text, filename) {
   const blob = new Blob([text], { type: 'application/octet-stream' });
@@ -268,46 +261,6 @@ function refreshUI(){ ival.textContent=intensityEl.value; sval.textContent=sound
       age: 0,
       life: 60 + (Math.random() * 40|0) // だいたい1～1.6秒くらいで薄れる（60fps想定）
       });
-  }
-      
-      /**
-      * カーソル周囲に円形（半径r）でランダムに複数の着弾をばら撒く
-      * @param {number} cx 中心x（キャレット）
-      * @param {number} cy 中心y（キャレット）
-      * @param {object} opts { count, radius, jitter }
-      */
-  function spawnCrackRing(cx, cy, opts = {}) {
-    if (!toggleFx.checked) return;
-    
-    const I = Math.max(0, Math.min(100, +intensityEl.value || 0));     // UIの「エフェクト大きさ」
-    const level = window.__lastSpeedLevel || 'none';
-    
-    // 着弾数：強度と速度で増やす
-    const count = opts.count ?? ( (level === 'bad' ? 5 : 3) + Math.floor(2 + I / 35) );
-    
-    // 基準半径：強度と速度で変化
-    const rBase = opts.radius ?? (26 + I * 1.3 + (level === 'bad' ? 12 : 0));
-    const jitter = opts.jitter ?? (rBase * 0.4); // 半径のバラつき
-    
-    for (let i = 0; i < count; i++) {
-      const ang = Math.random() * Math.PI * 2;
-      const r   = Math.max(8, rBase + (Math.random() * 2 - 1) * jitter);
-      const x   = cx + Math.cos(ang) * r;
-      const y   = cy + Math.sin(ang) * r;
-      
-      spawnCrack(x, y);   // 既存のひび割れ発生
-      addHole(x, y);      // 小クレーター
-      
-      // 小さめのフラッシュ（眩しすぎると感じたらこの行を消してOK）
-      if (Math.random() < 0.85) {
-        flashes.push({
-          x, y,
-          age: 0,
-          life: 14,
-          size: 70 * Math.max(0.5, (+intensityEl.value) / 100)
-        });
-      }
-    }
   }
       
   function drawCracks(){
