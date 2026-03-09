@@ -71,7 +71,8 @@ window.makeFilename = makeFilename; // 念のため外にも公開
   const soundVolEl=$('soundVol'), sval=$('sval'), realismEl=$('realism'), rval=$('rval'), reverbEl=$('reverb'), revval=$('revval');
   const jamEl=$('jam'), jamval=$('jamval');
   const charCountEl=$('charCount'), elapsedEl=$('elapsed'), cpmEl=$('cpm'), wpmAvgEl=$('wpmAvg'), modeSel=$('mode');
-  const idlePctEl=$('idlePct'), idleChip=$('idleChip'), bestTimeEl=$('bestTime'), resetSessionBtn=$('resetSessionBtn');
+  const idlePctEl=$('idlePct'), idleChip=$('idleChip'), bestTimeEl=$('bestTime'), resetSessionBtn=$('resetSessionBtn'), resetHighscoreBtn=$('resetHighscoreBtn');
+  const editorVersionEl=$('editorVersion');
   const aura=$('aura'), canvas=$('fx'), ctx=canvas.getContext('2d');
   const tabs=document.querySelectorAll('#tabs .tab'), autoResetSel=$('autoReset');
   const warnEl=$('warnTh'), badEl=$('badTh'), warmupEl=$('warmupSec'), warnVal=$('warnVal'), badVal=$('badVal'), warmVal=$('warmVal');
@@ -83,6 +84,22 @@ window.makeFilename = makeFilename; // 念のため外にも公開
 
   // Tabs
   tabs.forEach(btn=>btn.addEventListener('click',()=>{tabs.forEach(b=>b.classList.remove('active'));btn.classList.add('active');const tab=btn.dataset.tab;document.body.classList.toggle('tab-settings',tab==='settings');document.body.classList.toggle('tab-guide',tab==='guide');document.body.classList.toggle('tab-editor',tab==='editor');}));
+
+
+  function detectEditorVersion(){
+    try {
+      const manifestLink=document.querySelector('link[rel="manifest"]');
+      if(manifestLink){
+        const url=new URL(manifestLink.getAttribute('href'), location.href);
+        const v=url.searchParams.get('v');
+        if(v) return v;
+      }
+    } catch(_){ }
+    return 'unknown';
+  }
+  if(editorVersionEl){
+    editorVersionEl.textContent=detectEditorVersion();
+  }
 
   // Storage helpers
   const LS={high:'sj_highscore_sec',auto:'sj_auto_reset_sec',warn:'sj_warn_cpm',bad:'sj_bad_cpm',warm:'sj_warmup_sec',fs:'sj_font_px'};
@@ -411,13 +428,8 @@ async function loadGunshotSamples() {
       // === タイプライターモード（中央付近キープ） =========================
       const TYPEWRITER = {
         enabled: true,    // 必要なら設定タブからON/OFFしてもOK
-<<<<<<< codex/fix-input-screen-static-display-mx3a27
-        center: 0.5,      // 画面中央付近を維持
-        dead: 24          // 許容帯（px）。狭めて中央キープを強める
-=======
         center: 0.46,     // 少し上寄りに維持（下がって見える体感を補正）
         dead: 60          // 許容帯（px）。外れたときだけスクロール
->>>>>>> main
           };
       
       let twRaf = 0;
@@ -765,6 +777,16 @@ if (saveBtn && !saveBtn.dataset.bound) {
     resetSessionBtn.dataset.bound = '1';
     resetSessionBtn.addEventListener('click', ()=> {
       if (typeof endSession === 'function') endSession('manual');
+    }, { passive:true });
+  }
+
+  if (resetHighscoreBtn && !resetHighscoreBtn.dataset.bound) {
+    resetHighscoreBtn.dataset.bound = '1';
+    resetHighscoreBtn.addEventListener('click', ()=> {
+      highSec = 0;
+      try { localStorage.removeItem(LS.high); } catch(_) { }
+      showHigh();
+      toast('ハイスコアをリセットしました');
     }, { passive:true });
   }
 })();
