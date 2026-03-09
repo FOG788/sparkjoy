@@ -24,6 +24,7 @@
   <div id="tabs" class="tabs">
     <button class="tab active" data-tab="editor">エディタ</button>
     <button class="tab" data-tab="settings">設定</button>
+    <button class="tab" data-tab="guide">説明書</button>
   </div>
 
   <div id="toolbar" class="card">
@@ -93,6 +94,47 @@
   <div id="editorWrap" class="card">
     <div id="editor" contenteditable="true" spellcheck="false"></div>
   </div>
+
+  <section id="guidePanel" class="card" aria-label="説明書">
+    <h2>SparkJoy 説明書</h2>
+    <p class="muted">指標の意味と設定の使い方を、迷いやすい項目中心にまとめています。</p>
+
+    <h3>ステータス表示（上部バー）</h3>
+    <ul>
+      <li><strong>文字数</strong>：現在の本文の文字数です（改行・空白を含む表示上の文字数）。</li>
+      <li><strong>経過</strong>：セッション開始からの経過時間です。</li>
+      <li><strong>文字/分</strong>：直近の入力速度（CPM: Characters Per Minute）です。</li>
+      <li><strong>平均WPM</strong>：セッション全体の平均WPM（Words Per Minute）です。</li>
+      <li><strong>モード</strong>：<em>執筆</em>は集中入力向け、<em>推敲</em>は見直し時に使います。</li>
+      <li><strong>停止比</strong>：入力していない時間の割合です。高いほど「手が止まっている」状態です。</li>
+      <li><strong>ハイスコア</strong>：過去の最長継続時間です。</li>
+      <li><strong>セッションリセット</strong>：経過時間・平均値などを現在の内容のまま初期化します。</li>
+    </ul>
+
+    <h3>設定項目（設定タブ）</h3>
+    <ul>
+      <li><strong>文字サイズ</strong>：エディタ本文の表示サイズです。</li>
+      <li><strong>エフェクト大きさ</strong>：画面エフェクト（ひび・フラッシュ等）の強さです。</li>
+      <li><strong>エフェクト</strong>：視覚エフェクト全体の ON/OFF です。</li>
+      <li><strong>サウンド</strong>：効果音全体の ON/OFF です。</li>
+      <li><strong>音量</strong>：効果音の音量です。</li>
+      <li><strong>リアル度</strong>：音や演出の「生々しさ」寄りの強調度です。</li>
+      <li><strong>リバーブ</strong>：残響感の強さです。</li>
+      <li><strong>ジャム確率</strong>：ジャム演出（不発・ひっかかり）の発生しやすさです。</li>
+      <li><strong>無操作リセット</strong>：一定時間入力がないとき、セッション統計を自動リセットします。</li>
+      <li><strong>黄しきい値(CPM)</strong>：速度低下の注意（黄）判定になる CPM 境界です。</li>
+      <li><strong>赤しきい値(CPM)</strong>：速度低下の警告（赤）判定になる CPM 境界です。</li>
+      <li><strong>ウォームアップ</strong>：開始直後の猶予秒数です。この間は黄/赤判定になりません。</li>
+    </ul>
+
+    <h3>おすすめの使い方（提案）</h3>
+    <ul>
+      <li>まずは <strong>ウォームアップ 8〜15秒</strong>、<strong>黄しきい値 70〜100</strong>、<strong>赤しきい値 90〜130</strong> から調整すると安定します。</li>
+      <li>集中が切れやすい場合は、<strong>無操作リセット 3〜5分</strong> がおすすめです。</li>
+      <li>音が疲れるときは、<strong>音量を下げる</strong>か<strong>サウンドOFF</strong>で運用すると長時間作業しやすくなります。</li>
+      <li>視覚刺激が強いと感じたら、<strong>エフェクト大きさ</strong>を下げるか<strong>エフェクトOFF</strong>にしてください。</li>
+    </ul>
+  </section>
 
   <canvas id="fx"></canvas>
   <div id="aura" aria-hidden="true"></div>
