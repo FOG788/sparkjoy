@@ -148,7 +148,10 @@ function refreshUI(){ ival.textContent=intensityEl.value; sval.textContent=sound
   const formatTime=(sec)=>{const s=(sec%60|0).toString().padStart(2,'0'), m=((sec/60|0)%60).toString().padStart(2,'0'), h=(sec/3600|0); return (h>0?h+':':'')+m+':'+s; };
 
   let highSec=loadHigh(); const showHigh=()=>{if(bestTimeEl) bestTimeEl.textContent=formatTime(highSec)}; showHigh();
-  function updateHigh(elapsedSec){ if(elapsedSec>highSec){ highSec=elapsedSec|0; saveHigh(highSec); showHigh(); toast('ハイスコア更新: '+formatTime(highSec)); } }
+  function updateHigh(elapsedSec, opts={}){
+    const announce=opts.announce!==false;
+    if(elapsedSec>highSec){ highSec=elapsedSec|0; saveHigh(highSec); showHigh(); if(announce) toast('ハイスコア更新: '+formatTime(highSec)); }
+  }
 
   let autoResetSec=loadAuto(); autoResetSel.value=String(autoResetSec);
   autoResetSel.addEventListener('change',()=>{autoResetSec=parseInt(autoResetSel.value,10)||0; saveAuto(autoResetSec);});
@@ -167,6 +170,7 @@ function refreshUI(){ ival.textContent=intensityEl.value; sval.textContent=sound
     const now=performance.now(); if(typingStart && autoResetSec>0 && (now-lastInputAt)>autoResetSec*1000){ endSession('idle'); }
     if(!typingStart){ elapsedEl&&(elapsedEl.textContent='00:00'); cpmEl&&(cpmEl.textContent='0'); wpmAvgEl&&(wpmAvgEl.textContent='0'); idlePctEl&&(idlePctEl.textContent='0%'); setChipClass(idleChip,null); setChipClass(cpmEl&&cpmEl.parentElement,null); return; }
     const elapsed=(now-typingStart)/1000; elapsedEl&&(elapsedEl.textContent=formatTime(elapsed));
+    updateHigh(elapsed,{announce:false});
     const cutoff=now-ROLL_MS; while(cDeltaBuf.length && cDeltaBuf[0].t<cutoff){ cDeltaBuf.shift(); }
     let sum=0; for(const s of cDeltaBuf){ sum+=s.c; }
     const spanSec=Math.max(1, Math.min(ROLL_MS/1000, elapsed)); const cpm=Math.round(sum*60/spanSec);
