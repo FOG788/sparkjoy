@@ -1,16 +1,17 @@
 name: PR preview deploy to GitHub Pages
 
 on:
-  pull_request_target:
-    branches:
-      - main
-    types:
-      - opened
-      - synchronize
-      - reopened
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Preview target ref (branch name, tag, or commit SHA)'
+        required: true
+        default: 'main'
 
 permissions:
   contents: read
+  pages: write
+  id-token: write
 
 concurrency:
   group: pages-pr-preview
@@ -18,20 +19,15 @@ concurrency:
 
 jobs:
   deploy_pr_preview:
-    if: github.event.pull_request.head.repo.full_name == github.repository
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout PR head
+      - name: Checkout target ref
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.inputs.ref }}
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
@@ -41,6 +37,6 @@ jobs:
         with:
           path: .
 
-      - name: Deploy PR preview to GitHub Pages
+      - name: Deploy preview to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
