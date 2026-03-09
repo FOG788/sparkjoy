@@ -411,8 +411,13 @@ async function loadGunshotSamples() {
       // === タイプライターモード（中央付近キープ） =========================
       const TYPEWRITER = {
         enabled: true,    // 必要なら設定タブからON/OFFしてもOK
+<<<<<<< codex/fix-input-screen-static-display-mx3a27
+        center: 0.5,      // 画面中央付近を維持
+        dead: 24          // 許容帯（px）。狭めて中央キープを強める
+=======
         center: 0.46,     // 少し上寄りに維持（下がって見える体感を補正）
         dead: 60          // 許容帯（px）。外れたときだけスクロール
+>>>>>>> main
           };
       
       let twRaf = 0;
@@ -463,7 +468,11 @@ async function loadGunshotSamples() {
   function scheduleTW(){
     if (!TYPEWRITER.enabled) return;
     cancelAnimationFrame(twRaf);
-    twRaf = requestAnimationFrame(keepCaretCentered);
+    twRaf = requestAnimationFrame(()=>{
+      keepCaretCentered();
+      // 入力直後のブラウザ自動スクロールを上書きするため、次フレームでも再補正
+      requestAnimationFrame(keepCaretCentered);
+    });
   }
   function playGunshot(){
     if(!toggleSound.checked) return; ensureAudio(); resumeAudio();
@@ -606,6 +615,10 @@ async function loadGunshotSamples() {
     lastCaret=caretClientPoint();
     scheduleTW();
   });
+  document.addEventListener('selectionchange', ()=>{
+    if (document.activeElement===editor) scheduleTW();
+  });
+  editor.addEventListener('keydown', scheduleTW);
       editor.addEventListener('click', scheduleTW);
       editor.addEventListener('keyup', (e)=>{
         if (e.key && /Arrow|PageUp|PageDown|Home|End/.test(e.key)) scheduleTW();
