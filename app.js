@@ -285,18 +285,57 @@ window.makeFilename = makeFilename; // 念のため外にも公開
 
     const topChamberTopY=topY+lipR;
     const bottomChamberBottomY=bottomY-lipR;
-    const topChamberH=Math.max(1, neckY-topChamberTopY);
-    const bottomChamberH=Math.max(1, bottomChamberBottomY-neckY);
 
     const sandProgress=Math.max(0, Math.min(1, ratio));
-    const bottomSandCap=0.55;
-    const topFill=Math.max(0, Math.min(1, 1-Math.pow(sandProgress,0.92)));
-    if(topFill>0){
-      const topFillY=neckY-(topChamberH*topFill);
-      const topEdgeW=halfWidthAtY(topFillY);
+
+    // 2D 断面の「砂量」を数値積分して、上部減少量と下部増加量を一致させる。
+    const integrateWidth=(y0,y1,step=1)=>{
+      const a=Math.min(y0,y1), b=Math.max(y0,y1);
+      if(b-a<=0) return 0;
+      let area=0;
+      for(let y=a; y<b; y+=step){
+        const yNext=Math.min(b,y+step);
+        area += ((halfWidthAtY(y)+halfWidthAtY(yNext))*0.5*2) * (yNext-y);
+      }
+      return area;
+    };
+    const solveFillTopY=(targetArea)=>{
+      if(targetArea<=0) return neckY;
+      const fullArea=integrateWidth(topChamberTopY, neckY);
+      if(targetArea>=fullArea) return topChamberTopY;
+      let lo=topChamberTopY, hi=neckY;
+      for(let i=0;i<24;i++){
+        const mid=(lo+hi)/2;
+        const area=integrateWidth(mid, neckY);
+        if(area>targetArea) lo=mid; else hi=mid;
+      }
+      return (lo+hi)/2;
+    };
+    const solveFillBottomY=(targetArea)=>{
+      const fullArea=integrateWidth(neckY, bottomChamberBottomY);
+      if(targetArea<=0) return bottomChamberBottomY;
+      if(targetArea>=fullArea) return neckY;
+      let lo=neckY, hi=bottomChamberBottomY;
+      for(let i=0;i<24;i++){
+        const mid=(lo+hi)/2;
+        const area=integrateWidth(mid, bottomChamberBottomY);
+        if(area>targetArea) lo=mid; else hi=mid;
+      }
+      return (lo+hi)/2;
+    };
+
+    const topCapacity=integrateWidth(topChamberTopY, neckY);
+    const bottomCapacity=integrateWidth(neckY, bottomChamberBottomY);
+    const transferable=Math.min(topCapacity, bottomCapacity);
+    const movedArea=transferable*sandProgress;
+    const topArea=Math.max(0, topCapacity-movedArea);
+    const bottomArea=Math.max(0, movedArea);
+
+    if(topArea>0.5){
+      const topFillY=solveFillTopY(topArea);
       hg.beginPath();
-      hg.moveTo(cx-topEdgeW, topFillY);
-      hg.quadraticCurveTo(cx, topFillY - bowlH*0.08*topFill, cx+topEdgeW, topFillY);
+      hg.moveTo(cx-halfWidthAtY(topFillY), topFillY);
+      hg.lineTo(cx+halfWidthAtY(topFillY), topFillY);
       for(let y=topFillY; y<=neckY-1; y+=sideStep){
         hg.lineTo(cx+halfWidthAtY(y), y);
       }
@@ -308,18 +347,16 @@ window.makeFilename = makeFilename; // 念のため外にも公開
       hg.fill();
     }
 
-    const bottomFill=Math.max(0, Math.min(1, bottomSandCap*Math.pow(sandProgress,1.85)));
-    if(bottomFill>0){
-      const bottomFillY=bottomChamberBottomY-(bottomChamberH*bottomFill);
-      const bottomSandBaseY=bottomY-1;
+    if(bottomArea>0.5){
+      const bottomFillY=solveFillBottomY(bottomArea);
+      const bottomSandBaseY=bottomChamberBottomY;
       hg.beginPath();
       hg.moveTo(cx+halfWidthAtY(bottomSandBaseY), bottomSandBaseY);
-      for(let y=bottomSandBaseY; y>=bottomFillY+1; y-=sideStep){
+      for(let y=bottomSandBaseY; y>=bottomFillY; y-=sideStep){
         hg.lineTo(cx+halfWidthAtY(y), y);
       }
-      const topEdgeW=halfWidthAtY(bottomFillY+1);
-      hg.quadraticCurveTo(cx, bottomFillY - bowlH*0.06*bottomFill, cx-topEdgeW, bottomFillY+1);
-      for(let y=bottomFillY+1; y<=bottomSandBaseY; y+=sideStep){
+      hg.lineTo(cx-halfWidthAtY(bottomFillY), bottomFillY);
+      for(let y=bottomFillY; y<=bottomSandBaseY; y+=sideStep){
         hg.lineTo(cx-halfWidthAtY(y), y);
       }
       hg.closePath();
