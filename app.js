@@ -284,7 +284,7 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     hg.fillStyle=sandGrad;
 
     const topChamberTopY=topY+lipR;
-    const bottomChamberBottomY=bottomY-lipR;
+    const bottomChamberBottomY=bottomY-1;
 
     const sandProgress=Math.max(0, Math.min(1, ratio));
 
@@ -327,8 +327,9 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     const topCapacity=integrateWidth(topChamberTopY, neckY);
     const bottomCapacity=integrateWidth(neckY, bottomChamberBottomY);
     const transferable=Math.min(topCapacity, bottomCapacity);
-    const movedArea=transferable*sandProgress;
-    const topArea=Math.max(0, topCapacity-movedArea);
+    const totalSandArea=transferable*0.7;
+    const movedArea=totalSandArea*sandProgress;
+    const topArea=Math.max(0, totalSandArea-movedArea);
     const bottomArea=Math.max(0, movedArea);
 
     if(topArea>0.5){
