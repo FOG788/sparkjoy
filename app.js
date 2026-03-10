@@ -391,12 +391,6 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     hg.strokeStyle='rgba(224,235,247,.52)';
     hg.stroke();
 
-    hg.beginPath();
-    hg.moveTo(cx-bowlW*0.52, topY+lipR*0.6);
-    hg.bezierCurveTo(cx-bowlW*0.74, topY+bowlH*0.22, cx-bowlW*0.66, neckY-bowlH*0.08, cx-neckW*1.6, neckY-2);
-    hg.strokeStyle='rgba(255,255,255,.18)';
-    hg.lineWidth=Math.max(1.2, w*0.008);
-    hg.stroke();
   }
 
 
