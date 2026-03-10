@@ -94,17 +94,32 @@
       transition:height .6s linear;
       z-index:1;
     }
-    .hourglass-top-sand{top:4%; height:40%; border-radius:24px 24px 18px 18px}
-    .hourglass-bottom-sand{bottom:4%; height:0; border-radius:18px 18px 24px 24px}
+    .hourglass-top-sand{
+      bottom:50%;
+      height:40%;
+      clip-path:polygon(4% 0, 96% 0, 86% 74%, 62% 100%, 38% 100%, 14% 74%);
+      border-radius:22px 22px 10px 10px;
+    }
+    .hourglass-bottom-sand{
+      bottom:4%;
+      height:0;
+      clip-path:polygon(35% 0, 65% 0, 94% 100%, 6% 100%);
+      border-radius:8px 8px 22px 22px;
+    }
     .hourglass-stream{
       position:absolute;
       left:50%;
       top:50%;
-      transform:translate(-50%, -50%);
-      width:10px;
-      height:24%;
-      background:linear-gradient(180deg, rgba(248,208,107,.85), rgba(217,141,47,.45));
+      transform:translate(-50%, 1px);
+      width:2px;
+      height:13%;
+      background:repeating-linear-gradient(
+        180deg,
+        rgba(248,208,107,.92) 0 4px,
+        rgba(217,141,47,.18) 4px 8px
+      );
       border-radius:999px;
+      box-shadow:0 0 3px rgba(248,208,107,.22);
       opacity:0;
       transition:opacity .2s ease;
       z-index:4;
