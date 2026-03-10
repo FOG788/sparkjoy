@@ -14,7 +14,15 @@
     .chip{display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:999px; background:rgba(0,0,0,.25); border:1px solid var(--border)}
     .chip input[type="range"], .chip select{width:140px}
     #editorWrap{margin:0 12px 12px; flex:1; min-height:0; overflow:auto}
-    #editor{min-height:100%; padding:14px; outline:none; white-space:pre-wrap; word-break:break-word}
+    #editor{
+      min-height:100%;
+      width:min(100%, var(--editor-measure));
+      margin:0 auto;
+      padding:14px clamp(24px, 8vw, 96px);
+      outline:none;
+      white-space:pre-wrap;
+      word-break:break-word;
+    }
     #editor[contenteditable="true"]:empty:before{content:"ここに書き始めよう…"; color:var(--muted)}
     #fx{position:fixed; inset:0; pointer-events:none; z-index:1000}
     .toast{position:fixed; left:50%; top:12px; transform:translateX(-50%); padding:8px 12px; border-radius:8px; background:#1f2a3a; color:#e6ecf3; border:1px solid rgba(255,255,255,.15); z-index:2000; opacity:.95}
@@ -54,6 +62,7 @@
       /* 好みで調整（中央キープのための余白） */
       --tw-top: 18vh;     /* 上側のダミー余白 */
       --tw-bottom: 72vh;  /* 末尾でも中央キープできるよう下側余白を十分に確保 */
+      --editor-measure: 88ch; /* 1行の最大幅（長文でも視線が左に寄りすぎない） */
     }
     #editor::before,
     #editor::after{
