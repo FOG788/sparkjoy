@@ -82,12 +82,19 @@ window.makeFilename = makeFilename; // 念のため外にも公開
 
   function detectEditorVersion(){
     try {
+      const versionMeta=document.querySelector('meta[name="sparkjoy-version"]');
+      const metaVersion=versionMeta?.getAttribute('content')?.trim();
+      if(metaVersion) return metaVersion;
+
       const manifestLink=document.querySelector('link[rel="manifest"]');
       if(manifestLink){
         const url=new URL(manifestLink.getAttribute('href'), location.href);
         const v=url.searchParams.get('v');
         if(v) return v;
       }
+
+      const titleVersion=document.title.match(/\((r\d+[^)]*)\)$/i)?.[1]?.trim();
+      if(titleVersion) return titleVersion;
     } catch(_){ }
     return 'unknown';
   }
@@ -150,7 +157,7 @@ window.makeFilename = makeFilename; // 念のため外にも公開
   const saveWarm=(v)=>Persistence.saveNumWithCookie(LS.warm,CK.warm,v);
   const loadFs  =()=>Persistence.loadNumWithCookie(LS.fs,CK.fs,16);
   const saveFs  =(v)=>Persistence.saveNumWithCookie(LS.fs,CK.fs,v);
-  const loadMeasure=()=>Persistence.loadNumWithCookie(LS.measure,CK.measure,88);
+  const loadMeasure=()=>Persistence.loadNumWithCookie(LS.measure,CK.measure,120);
   const saveMeasure=(v)=>Persistence.saveNumWithCookie(LS.measure,CK.measure,v);
 
   const sliderSettings=[
@@ -175,7 +182,7 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     if (fsVal)  fsVal.textContent    = v + 'px';
   }
   function applyEditorMeasure(ch){
-    const v = Math.max(56, Math.min(110, +ch||88));
+    const v = Math.max(100, Math.min(160, +ch||120));
     document.documentElement.style.setProperty('--editor-measure', v + 'ch');
     if (measureVal) measureVal.textContent = v + 'ch';
   }
