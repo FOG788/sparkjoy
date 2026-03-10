@@ -69,6 +69,9 @@ window.makeFilename = makeFilename; // 念のため外にも公開
   const editorVersionEl=$('editorVersion');
   const aura=$('aura'), canvas=$('fx'), ctx=canvas.getContext('2d');
   const tabs=document.querySelectorAll('#tabs .tab'), autoResetSel=$('autoReset');
+  const hourglassSel=$('hourglassDuration'), hourglassWidget=$('hourglassWidget');
+  const hourglassTopSand=document.querySelector('.hourglass-top-sand'), hourglassBottomSand=document.querySelector('.hourglass-bottom-sand'), hourglassStream=document.querySelector('.hourglass-stream');
+  const hourglassOpacityEl=$('hourglassOpacity'), hourglassOpacityVal=$('hourglassOpacityVal');
   const warnEl=$('warnTh'), badEl=$('badTh'), warmupEl=$('warmupSec'), warnVal=$('warnVal'), badVal=$('badVal'), warmVal=$('warmVal');
   
 
@@ -103,9 +106,9 @@ window.makeFilename = makeFilename; // 念のため外にも公開
   }
 
   // Persistence helpers
-  const LS={high:'sj_highscore_sec',auto:'sj_auto_reset_sec',warn:'sj_warn_cpm',bad:'sj_bad_cpm',warm:'sj_warmup_sec',fs:'sj_font_px',measure:'sj_editor_measure'};
+  const LS={high:'sj_highscore_sec',auto:'sj_auto_reset_sec',warn:'sj_warn_cpm',bad:'sj_bad_cpm',warm:'sj_warmup_sec',fs:'sj_font_px',measure:'sj_editor_measure',hourglass:'sj_hourglass_sec',hourglassOpacity:'sj_hourglass_opacity'};
   const CK={
-    auto:'sj_auto_reset_sec',warn:'sj_warn_cpm',bad:'sj_bad_cpm',warm:'sj_warmup_sec',fs:'sj_font_px',measure:'sj_editor_measure',
+    auto:'sj_auto_reset_sec',warn:'sj_warn_cpm',bad:'sj_bad_cpm',warm:'sj_warmup_sec',fs:'sj_font_px',measure:'sj_editor_measure',hourglass:'sj_hourglass_sec',hourglassOpacity:'sj_hourglass_opacity',
     mode:'sj_mode',intensity:'sj_intensity',fx:'sj_fx',sound:'sj_sound',soundVol:'sj_sound_vol',
     realism:'sj_realism',reverb:'sj_reverb',jam:'sj_jam'
   };
@@ -159,6 +162,10 @@ window.makeFilename = makeFilename; // 念のため外にも公開
   const saveFs  =(v)=>Persistence.saveNumWithCookie(LS.fs,CK.fs,v);
   const loadMeasure=()=>Persistence.loadNumWithCookie(LS.measure,CK.measure,120);
   const saveMeasure=(v)=>Persistence.saveNumWithCookie(LS.measure,CK.measure,v);
+  const loadHourglassSec=()=>Persistence.loadNumWithCookie(LS.hourglass,CK.hourglass,600);
+  const saveHourglassSec=(v)=>Persistence.saveNumWithCookie(LS.hourglass,CK.hourglass,v);
+  const loadHourglassOpacity=()=>Persistence.loadNumWithCookie(LS.hourglassOpacity,CK.hourglassOpacity,20);
+  const saveHourglassOpacity=(v)=>Persistence.saveNumWithCookie(LS.hourglassOpacity,CK.hourglassOpacity,v);
 
   const sliderSettings=[
     {el:intensityEl,key:CK.intensity,out:ival,format:(v)=>v},
@@ -169,7 +176,8 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     {el:measureEl,key:CK.measure,out:measureVal,format:(v)=>v+'ch',persist:saveMeasure},
     {el:warnEl,key:CK.warn,out:warnVal,format:(v)=>v,persist:saveWarn},
     {el:badEl,key:CK.bad,out:badVal,format:(v)=>v,persist:saveBad},
-    {el:warmupEl,key:CK.warm,out:warmVal,format:(v)=>v+'s',persist:saveWarm}
+    {el:warmupEl,key:CK.warm,out:warmVal,format:(v)=>v+'s',persist:saveWarm},
+    {el:hourglassOpacityEl,key:CK.hourglassOpacity,out:hourglassOpacityVal,format:(v)=>v+'%',persist:saveHourglassOpacity}
   ];
   const toggleSettings=[
     {el:toggleFx,key:CK.fx},
@@ -190,6 +198,26 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     sliderSettings.forEach(({el,out,format})=>{ out.textContent=format(el.value); });
     if(fontEl&&fsVal) fsVal.textContent=fontEl.value+'px';
   }
+
+  function updateHourglass(elapsedSec=0){
+    if(!hourglassWidget || !hourglassTopSand || !hourglassBottomSand || !hourglassStream || !hourglassSel) return;
+    const opacityRatio=Math.max(0.05, Math.min(0.6, (parseInt(hourglassOpacityEl?.value||'20',10)||20)/100));
+    const limitSec=Math.max(0, parseInt(hourglassSel.value,10) || 0);
+    hourglassWidget.style.opacity=String(opacityRatio);
+    if(limitSec<=0){
+      hourglassTopSand.style.height='0%';
+      hourglassBottomSand.style.height='40%';
+      hourglassStream.style.opacity='0';
+      return;
+    }
+    const ratio=Math.max(0, Math.min(1, elapsedSec/limitSec));
+    const topHeight=(40*(1-ratio)).toFixed(2)+'%';
+    const bottomHeight=(40*ratio).toFixed(2)+'%';
+    hourglassTopSand.style.height=topHeight;
+    hourglassBottomSand.style.height=bottomHeight;
+    hourglassStream.style.opacity=(ratio>0 && ratio<1)?'1':'0';
+  }
+
   function restoreSettings(){
     sliderSettings.forEach(({el,key,persist})=>{
       if(persist){
@@ -203,6 +231,8 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     if(fontEl) fontEl.value=String(loadFs());
     if(measureEl) measureEl.value=String(loadMeasure());
     if(modeSel) modeSel.value=Persistence.loadChoice(CK.mode, modeSel.value || 'write');
+    if(hourglassSel) hourglassSel.value=String(loadHourglassSec());
+    if(hourglassOpacityEl) hourglassOpacityEl.value=String(loadHourglassOpacity());
     toggleSettings.forEach(({el,key})=>{
       el.checked=Persistence.loadChoice(key,el.checked ? '1' : '0')==='1';
     });
@@ -223,6 +253,19 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     toggleSettings.forEach(({el,key})=>{
       el.addEventListener('change',()=>Persistence.setCookie(key,el.checked?'1':'0'));
     });
+    if(hourglassSel){
+      hourglassSel.addEventListener('change', ()=>{
+        saveHourglassSec(parseInt(hourglassSel.value,10)||0);
+        updateHourglass(getEffectiveElapsedSec());
+      });
+    }
+    if(hourglassOpacityEl){
+      hourglassOpacityEl.addEventListener('input', ()=>{
+        saveHourglassOpacity(parseInt(hourglassOpacityEl.value,10)||20);
+        refreshUI();
+        updateHourglass(getEffectiveElapsedSec());
+      });
+    }
     if(fontEl){
       fontEl.addEventListener('input', ()=>{
         applyFont(fontEl.value);
@@ -324,9 +367,11 @@ window.makeFilename = makeFilename; // 念のため外にも公開
       wpmAvgEl&&(wpmAvgEl.textContent=String(avgWpm));
       idlePctEl&&(idlePctEl.textContent='0%');
       setChipClass(idleChip,null); setChipClass(cpmEl&&cpmEl.parentElement,null);
+      updateHourglass(elapsedCarrySec);
       return;
     }
     const elapsed=getEffectiveElapsedSec(now); elapsedEl&&(elapsedEl.textContent=formatTime(elapsed));
+    updateHourglass(elapsed);
     updateHigh(elapsed,{announce:false});
     const cutoff=now-ROLL_MS; while(cDeltaBuf.length && cDeltaBuf[0].t<cutoff){ cDeltaBuf.shift(); }
     let sum=0; for(const s of cDeltaBuf){ sum+=s.c; }
@@ -348,6 +393,7 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     }
   }
   updateStats();
+  updateHourglass(getEffectiveElapsedSec());
 
   // Crack effect
   const cracks=[], flashes=[], holes=[];

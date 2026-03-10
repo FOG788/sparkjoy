@@ -13,12 +13,13 @@
     .bar{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
     .chip{display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:999px; background:rgba(0,0,0,.25); border:1px solid var(--border)}
     .chip input[type="range"], .chip select{width:140px}
-    #editorWrap{margin:0 12px 12px; flex:1; min-height:0; overflow:auto}
+    
+    #editorWrap{margin:0 12px 12px; flex:1; min-height:0; overflow:auto; position:relative;}
     #editor{
       min-height:100%;
       width:min(100%, var(--editor-measure));
       margin:0 auto;
-      padding:14px clamp(24px, 8vw, 96px);
+      padding:14px max(28px, 27vw) 14px clamp(24px, 6vw, 72px);
       outline:none;
       white-space:pre-wrap;
       word-break:break-word;
@@ -42,6 +43,73 @@
     body.shake-warn{animation:shakeWeak .28s linear 1}
     body.shake-bad{animation:shakeStrong .45s linear 1}
 
+
+    #hourglassWidget{
+      position:absolute;
+      right:0;
+      top:0;
+      bottom:0;
+      width:25%;
+      min-width:180px;
+      max-width:420px;
+      padding:14px 18px;
+      border-left:1px solid rgba(255,255,255,.1);
+      background:linear-gradient(270deg, rgba(18,26,38,.55), rgba(18,26,38,.2) 50%, rgba(18,26,38,0));
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      pointer-events:none;
+      z-index:2;
+    }
+    .hourglass-body{
+      position:relative;
+      width:min(88%, 280px);
+      height:100%;
+      border:5px solid rgba(224,235,247,.75);
+      border-radius:999px;
+      overflow:hidden;
+      background:linear-gradient(180deg, rgba(255,255,255,.09), rgba(0,0,0,.18));
+    }
+    .hourglass-body::before,
+    .hourglass-body::after{
+      content:"";
+      position:absolute;
+      left:50%;
+      transform:translateX(-50%);
+      width:0;
+      height:0;
+      border-left:64px solid transparent;
+      border-right:64px solid transparent;
+      pointer-events:none;
+      z-index:3;
+    }
+    .hourglass-body::before{top:50%; border-top:34px solid rgba(224,235,247,.35)}
+    .hourglass-body::after{top:50%; border-bottom:34px solid rgba(224,235,247,.35)}
+    .hourglass-top-sand,
+    .hourglass-bottom-sand{
+      position:absolute;
+      left:14%;
+      width:72%;
+      background:linear-gradient(180deg, #f8d06b 0%, #ebb24f 55%, #d98d2f 100%);
+      transition:height .6s linear;
+      z-index:1;
+    }
+    .hourglass-top-sand{top:4%; height:40%; border-radius:24px 24px 18px 18px}
+    .hourglass-bottom-sand{bottom:4%; height:0; border-radius:18px 18px 24px 24px}
+    .hourglass-stream{
+      position:absolute;
+      left:50%;
+      top:50%;
+      transform:translate(-50%, -50%);
+      width:10px;
+      height:24%;
+      background:linear-gradient(180deg, rgba(248,208,107,.85), rgba(217,141,47,.45));
+      border-radius:999px;
+      opacity:0;
+      transition:opacity .2s ease;
+      z-index:4;
+    }
+    body.tab-guide #hourglassWidget{display:none}
     #guidePanel{display:none; margin:0 12px 12px; padding:16px; flex:1; min-height:0; overflow:auto}
     #guidePanel h2,#guidePanel h3{margin:0 0 10px}
     #guidePanel ul{margin:0 0 16px 1.2em; padding:0}

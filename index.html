@@ -95,12 +95,34 @@
       <span class="chip"><label for="warmupSec">ウォームアップ</label>
         <input id="warmupSec" type="range" min="0" max="20" value="10"><span id="warmVal">10s</span>
       </span>
+      <span class="chip"><label for="hourglassDuration">砂時計</label>
+        <select id="hourglassDuration">
+          <option value="0">OFF</option>
+          <option value="60">1分</option>
+          <option value="180">3分</option>
+          <option value="300">5分</option>
+          <option value="600" selected>10分</option>
+          <option value="900">15分</option>
+          <option value="1800">30分</option>
+          <option value="3600">60分</option>
+        </select>
+      </span>
+      <span class="chip"><label for="hourglassOpacity">砂時計透明度</label>
+        <input id="hourglassOpacity" type="range" min="5" max="60" value="20"><span id="hourglassOpacityVal">20%</span>
+      </span>
       <span class="chip"><small class="muted">※ ウォームアップ中は黄/赤になりません</small></span>
     </div>
   </div>
 
   <div id="editorWrap" class="card">
     <div id="editor" contenteditable="true" spellcheck="false"></div>
+    <aside id="hourglassWidget" aria-label="経過時間の砂時計" aria-hidden="true">
+      <div class="hourglass-body">
+        <div class="hourglass-top-sand"></div>
+        <div class="hourglass-bottom-sand"></div>
+        <div class="hourglass-stream"></div>
+      </div>
+    </aside>
   </div>
 
   <section id="guidePanel" class="card" aria-label="説明書">
