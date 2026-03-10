@@ -94,78 +94,126 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     editorVersionEl.textContent=detectEditorVersion();
   }
 
-  // Storage helpers
+  // Persistence helpers
   const LS={high:'sj_highscore_sec',auto:'sj_auto_reset_sec',warn:'sj_warn_cpm',bad:'sj_bad_cpm',warm:'sj_warmup_sec',fs:'sj_font_px'};
   const CK={
     auto:'sj_auto_reset_sec',warn:'sj_warn_cpm',bad:'sj_bad_cpm',warm:'sj_warmup_sec',fs:'sj_font_px',
     mode:'sj_mode',intensity:'sj_intensity',fx:'sj_fx',sound:'sj_sound',soundVol:'sj_sound_vol',
     realism:'sj_realism',reverb:'sj_reverb',jam:'sj_jam'
   };
-  const setCookie=(name,value,days=400)=>{
-    try{
-      const d=new Date(Date.now()+days*24*60*60*1000);
-      document.cookie=`${encodeURIComponent(name)}=${encodeURIComponent(String(value))}; expires=${d.toUTCString()}; path=/; SameSite=Lax`;
-    }catch(_){ }
+  const Persistence={
+    setCookie(name,value,days=400){
+      try{
+        const d=new Date(Date.now()+days*24*60*60*1000);
+        document.cookie=`${encodeURIComponent(name)}=${encodeURIComponent(String(value))}; expires=${d.toUTCString()}; path=/; SameSite=Lax`;
+      }catch(_){ }
+    },
+    getCookie(name){
+      try{
+        const target=`${encodeURIComponent(name)}=`;
+        const hit=String(document.cookie||'').split('; ').find(c=>c.startsWith(target));
+        return hit ? decodeURIComponent(hit.slice(target.length)) : null;
+      }catch(_){ return null; }
+    },
+    loadNum(key,def){
+      try{
+        const v=parseInt(localStorage.getItem(key)||String(def),10);
+        return isNaN(v)?def:v;
+      }catch(_){ return def; }
+    },
+    saveNum(key,value){
+      try{ localStorage.setItem(key,String(value)); }catch(_){ }
+    },
+    loadNumWithCookie(storageKey,cookieKey,def){
+      const cv=parseInt(Persistence.getCookie(cookieKey)||'',10);
+      if(!isNaN(cv)) return cv;
+      return Persistence.loadNum(storageKey,def);
+    },
+    saveNumWithCookie(storageKey,cookieKey,value){
+      Persistence.saveNum(storageKey,value);
+      Persistence.setCookie(cookieKey,value);
+    },
+    loadChoice(cookieKey,def){
+      return Persistence.getCookie(cookieKey) ?? def;
+    }
   };
-  const getCookie=(name)=>{
-    try{
-      const target=`${encodeURIComponent(name)}=`;
-      const hit=String(document.cookie||'').split('; ').find(c=>c.startsWith(target));
-      return hit ? decodeURIComponent(hit.slice(target.length)) : null;
-    }catch(_){ return null; }
-  };
-  const loadNum=(k,def)=>{try{const v=parseInt(localStorage.getItem(k)||String(def),10);return isNaN(v)?def:v}catch(_){return def}};
-  const saveNum=(k,v)=>{try{localStorage.setItem(k,String(v))}catch(_){ }};
-  const loadHigh=()=>loadNum(LS.high,0), saveHigh=(s)=>saveNum(LS.high,Math.max(0,Math.floor(s)));
-  const loadNumWithCookie=(storageKey,cookieKey,def)=>{
-    const cv=parseInt(getCookie(cookieKey)||'',10);
-    if(!isNaN(cv)) return cv;
-    return loadNum(storageKey,def);
-  };
-  const saveNumWithCookie=(storageKey,cookieKey,v)=>{ saveNum(storageKey,v); setCookie(cookieKey,v); };
-  const loadAuto=()=>loadNumWithCookie(LS.auto,CK.auto,180), saveAuto=(s)=>saveNumWithCookie(LS.auto,CK.auto,s);
-  const loadWarn=()=>loadNumWithCookie(LS.warn,CK.warn,75),  saveWarn=(v)=>saveNumWithCookie(LS.warn,CK.warn,v);
-  const loadBad =()=>loadNumWithCookie(LS.bad,CK.bad,110),  saveBad =(v)=>saveNumWithCookie(LS.bad,CK.bad,v);
-  const loadWarm=()=>loadNumWithCookie(LS.warm,CK.warm,12),   saveWarm=(v)=>saveNumWithCookie(LS.warm,CK.warm,v);
-  const loadFs  =()=>loadNumWithCookie(LS.fs,CK.fs,16),     saveFs  =(v)=>saveNumWithCookie(LS.fs,CK.fs,v);
-  const loadChoice=(key,def)=>getCookie(key) ?? def;
+  const loadHigh=()=>Persistence.loadNum(LS.high,0);
+  const saveHigh=(s)=>Persistence.saveNum(LS.high,Math.max(0,Math.floor(s)));
+  const loadAuto=()=>Persistence.loadNumWithCookie(LS.auto,CK.auto,180);
+  const saveAuto=(s)=>Persistence.saveNumWithCookie(LS.auto,CK.auto,s);
+  const loadWarn=()=>Persistence.loadNumWithCookie(LS.warn,CK.warn,75);
+  const saveWarn=(v)=>Persistence.saveNumWithCookie(LS.warn,CK.warn,v);
+  const loadBad =()=>Persistence.loadNumWithCookie(LS.bad,CK.bad,110);
+  const saveBad =(v)=>Persistence.saveNumWithCookie(LS.bad,CK.bad,v);
+  const loadWarm=()=>Persistence.loadNumWithCookie(LS.warm,CK.warm,12);
+  const saveWarm=(v)=>Persistence.saveNumWithCookie(LS.warm,CK.warm,v);
+  const loadFs  =()=>Persistence.loadNumWithCookie(LS.fs,CK.fs,16);
+  const saveFs  =(v)=>Persistence.saveNumWithCookie(LS.fs,CK.fs,v);
+
+  const sliderSettings=[
+    {el:intensityEl,key:CK.intensity,out:ival,format:(v)=>v},
+    {el:soundVolEl,key:CK.soundVol,out:sval,format:(v)=>v},
+    {el:realismEl,key:CK.realism,out:rval,format:(v)=>v},
+    {el:reverbEl,key:CK.reverb,out:revval,format:(v)=>v},
+    {el:jamEl,key:CK.jam,out:jamval,format:(v)=>v},
+    {el:warnEl,key:CK.warn,out:warnVal,format:(v)=>v,persist:saveWarn},
+    {el:badEl,key:CK.bad,out:badVal,format:(v)=>v,persist:saveBad},
+    {el:warmupEl,key:CK.warm,out:warmVal,format:(v)=>v+'s',persist:saveWarm}
+  ];
+  const toggleSettings=[
+    {el:toggleFx,key:CK.fx},
+    {el:toggleSound,key:CK.sound}
+  ];
 
   function applyFont(px){
     const v = Math.max(10, Math.min(40, +px||16));
     if (editor) editor.style.fontSize = v + 'px';
     if (fsVal)  fsVal.textContent    = v + 'px';
   }
-  applyFont(loadFs());
-  
-  warnEl.value=String(loadWarn()); badEl.value=String(loadBad()); warmupEl.value=String(loadWarm());
-  if (fontEl) fontEl.value = String(loadFs());
-  if (modeSel) modeSel.value = loadChoice(CK.mode, modeSel.value || 'write');
-  intensityEl.value = loadChoice(CK.intensity, intensityEl.value);
-  toggleFx.checked = loadChoice(CK.fx, toggleFx.checked ? '1' : '0') === '1';
-  toggleSound.checked = loadChoice(CK.sound, toggleSound.checked ? '1' : '0') === '1';
-  soundVolEl.value = loadChoice(CK.soundVol, soundVolEl.value);
-  realismEl.value = loadChoice(CK.realism, realismEl.value);
-  reverbEl.value = loadChoice(CK.reverb, reverbEl.value);
-  jamEl.value = loadChoice(CK.jam, jamEl.value);
-      
-function refreshUI(){ ival.textContent=intensityEl.value; sval.textContent=soundVolEl.value; rval.textContent=realismEl.value; revval.textContent=reverbEl.value; jamval.textContent=jamEl.value; warnVal.textContent=warnEl.value; badVal.textContent=badEl.value; warmVal.textContent=warmupEl.value+'s'; if(fontEl&&fsVal) fsVal.textContent=fontEl.value+'px'; }
-      ;[intensityEl,soundVolEl,realismEl,reverbEl,jamEl].forEach(el=>el.addEventListener('input',refreshUI));
-      intensityEl.addEventListener('change',()=>setCookie(CK.intensity,intensityEl.value));
-      toggleFx.addEventListener('change',()=>setCookie(CK.fx,toggleFx.checked?'1':'0'));
-      toggleSound.addEventListener('change',()=>setCookie(CK.sound,toggleSound.checked?'1':'0'));
-      soundVolEl.addEventListener('change',()=>setCookie(CK.soundVol,soundVolEl.value));
-      realismEl.addEventListener('change',()=>setCookie(CK.realism,realismEl.value));
-      reverbEl.addEventListener('change',()=>setCookie(CK.reverb,reverbEl.value));
-      jamEl.addEventListener('change',()=>setCookie(CK.jam,jamEl.value));
-      fontEl && fontEl.addEventListener('input', ()=>{
+  function refreshUI(){
+    sliderSettings.forEach(({el,out,format})=>{ out.textContent=format(el.value); });
+    if(fontEl&&fsVal) fsVal.textContent=fontEl.value+'px';
+  }
+  function restoreSettings(){
+    sliderSettings.forEach(({el,key,persist})=>{
+      if(persist){
+        return;
+      }
+      el.value=Persistence.loadChoice(key,el.value);
+    });
+    warnEl.value=String(loadWarn());
+    badEl.value=String(loadBad());
+    warmupEl.value=String(loadWarm());
+    if(fontEl) fontEl.value=String(loadFs());
+    if(modeSel) modeSel.value=Persistence.loadChoice(CK.mode, modeSel.value || 'write');
+    toggleSettings.forEach(({el,key})=>{
+      el.checked=Persistence.loadChoice(key,el.checked ? '1' : '0')==='1';
+    });
+    applyFont(loadFs());
+  }
+  function bindSettingControls(){
+    sliderSettings.forEach(({el,key,persist})=>{
+      el.addEventListener('input',()=>{
+        if(persist) persist(el.value);
+        refreshUI();
+      });
+      if(!persist){
+        el.addEventListener('change',()=>Persistence.setCookie(key,el.value));
+      }
+    });
+    toggleSettings.forEach(({el,key})=>{
+      el.addEventListener('change',()=>Persistence.setCookie(key,el.checked?'1':'0'));
+    });
+    if(fontEl){
+      fontEl.addEventListener('input', ()=>{
         applyFont(fontEl.value);
         saveFs(+fontEl.value||16);
-        // 文字サイズ変更後にキャレット位置の再補正（タイプライターモードの揺れ防止）
         if (typeof scheduleTW==='function') scheduleTW();
       });
-  warnEl.addEventListener('input',()=>{refreshUI();saveWarn(warnEl.value)});
-  badEl .addEventListener('input',()=>{refreshUI();saveBad (badEl.value)});
-  warmupEl.addEventListener('input',()=>{refreshUI();saveWarm(warmupEl.value)});
+    }
+  }
+  restoreSettings();
+  bindSettingControls();
   refreshUI();
 
   // Stats
@@ -661,7 +709,7 @@ async function loadGunshotSamples() {
     scheduleTW();
   }
   editor.addEventListener('input', onInput);
-  modeSel && modeSel.addEventListener('change', ()=>{ setCookie(CK.mode,modeSel.value); updateStats(); });
+  modeSel && modeSel.addEventListener('change', ()=>{ Persistence.setCookie(CK.mode,modeSel.value); updateStats(); });
   editor.addEventListener('focus',()=>{
     lastCaret=caretClientPoint();
     scheduleTW();
