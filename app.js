@@ -359,44 +359,25 @@ window.makeFilename = makeFilename; // 念のため外にも公開
       const streamW=Math.max(1.8, w*0.0048);
       const streamH=bowlH*0.7;
       const streamTop=neckY-1;
-      const impactY=neckY+bowlH*0.66;
       const streamTime=animTimeSec;
       const seed=ratio*173.0 + streamTime*6.0;
 
-      const grains=24;
+      const grains=13;
       for(let i=0;i<grains;i++){
-        const t=((streamTime*1.6)+(i/grains))%1;
+        const rand=Math.sin((i+1)*12.9898+seed*0.7)*43758.5453;
+        const frac=rand-Math.floor(rand);
+        const t=((streamTime*(0.9+frac*1.3)) + frac)%1;
         const y=streamTop+streamH*t;
         const phase=seed+i*2.37;
-        const sway=Math.sin(phase)*streamW*2.6 + Math.sin(phase*0.43+streamTime*3.2)*streamW*1.4;
-        const r=Math.max(0.9, streamW*(0.62+0.34*Math.sin(seed+i*2.1)));
+        const wobble=(Math.sin(streamTime*4.4 + i*1.7)*0.5+0.5);
+        const sway=(Math.sin(phase)*streamW*4.2 + Math.sin(phase*0.43+streamTime*3.2)*streamW*2.2) + (frac-0.5)*streamW*5.2*wobble;
+        const r=Math.max(1.1, streamW*(0.74+0.4*Math.sin(seed+i*2.1)));
         hg.beginPath();
-        hg.fillStyle=`rgba(248,208,107,${0.34+0.5*(1-t)})`;
+        hg.fillStyle=`rgba(248,208,107,${0.4+0.45*(1-t)})`;
         hg.arc(cx+sway, y, r, 0, Math.PI*2);
         hg.fill();
       }
 
-      const sinkDepth=Math.max(10, bowlH*0.3);
-      const sinkW=Math.max(0.7, streamW*1.1);
-      const sinkBottomY=Math.min(bottomY-2, impactY+sinkDepth);
-      hg.beginPath();
-      hg.fillStyle='rgba(233,173,79,.26)';
-      hg.moveTo(cx-sinkW, impactY);
-      hg.lineTo(cx+sinkW, impactY);
-      hg.lineTo(cx+sinkW*0.55, sinkBottomY);
-      hg.lineTo(cx-sinkW*0.55, sinkBottomY);
-      hg.closePath();
-      hg.fill();
-
-      hg.beginPath();
-      hg.fillStyle='rgba(248,208,107,.78)';
-      hg.ellipse(cx, impactY, 2.0, 1.35, 0, 0, Math.PI*2);
-      hg.fill();
-
-      hg.beginPath();
-      hg.fillStyle='rgba(248,208,107,.42)';
-      hg.ellipse(cx, sinkBottomY-1, 1.25, 0.95, 0, 0, Math.PI*2);
-      hg.fill();
     }
     hg.restore();
 
