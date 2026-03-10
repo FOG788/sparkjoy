@@ -45,13 +45,12 @@
 
 
     #hourglassWidget{
-      position:absolute;
-      right:0;
-      top:0;
-      bottom:0;
-      width:34%;
-      min-width:260px;
-      max-width:620px;
+      position:fixed;
+      right:12px;
+      top:calc(env(safe-area-inset-top) + 136px);
+      bottom:12px;
+      width:min(34vw, 620px);
+      min-width:240px;
       padding:14px 18px;
       border-left:1px solid rgba(255,255,255,.1);
       background:linear-gradient(270deg, rgba(18,26,38,.55), rgba(18,26,38,.2) 50%, rgba(18,26,38,0));
@@ -59,7 +58,9 @@
       align-items:center;
       justify-content:center;
       pointer-events:none;
-      z-index:2;
+      z-index:12;
+      contain:layout paint;
+      transform:translateZ(0);
     }
     .hourglass-canvas{
       width:min(98%, 400px);

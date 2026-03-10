@@ -71,11 +71,6 @@ window.makeFilename = makeFilename; // 念のため外にも公開
   const tabs=document.querySelectorAll('#tabs .tab'), autoResetSel=$('autoReset');
   const hourglassSel=$('hourglassDuration'), hourglassWidget=$('hourglassWidget'), hourglassCanvas=$('hourglassCanvas');
 
-  function syncHourglassViewportAnchor(){
-    if(!hourglassWidget || !editorWrap) return;
-    const y=editorWrap.scrollTop||0;
-    hourglassWidget.style.transform=`translateY(${y}px)`;
-  }
   const hourglassOpacityEl=$('hourglassOpacity'), hourglassOpacityVal=$('hourglassOpacityVal');
   const warnEl=$('warnTh'), badEl=$('badTh'), warmupEl=$('warmupSec'), warnVal=$('warnVal'), badVal=$('badVal'), warmVal=$('warmVal');
   
@@ -83,10 +78,6 @@ window.makeFilename = makeFilename; // 念のため外にも公開
   // Canvas DPR
   function resizeCanvas(){ const DPR=window.devicePixelRatio||1; canvas.width=innerWidth*DPR|0; canvas.height=innerHeight*DPR|0; canvas.style.width=innerWidth+'px'; canvas.style.height=innerHeight+'px'; ctx.setTransform(DPR,0,0,DPR,0,0); }
   addEventListener('resize', resizeCanvas); resizeCanvas();
-  addEventListener('resize', syncHourglassViewportAnchor);
-  if(editorWrap){
-    editorWrap.addEventListener('scroll', syncHourglassViewportAnchor, {passive:true});
-  }
 
   // Tabs
   tabs.forEach(btn=>btn.addEventListener('click',()=>{tabs.forEach(b=>b.classList.remove('active'));btn.classList.add('active');const tab=btn.dataset.tab;document.body.classList.toggle('tab-settings',tab==='settings');document.body.classList.toggle('tab-guide',tab==='guide');document.body.classList.toggle('tab-editor',tab==='editor');}));
@@ -208,7 +199,7 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     if(fontEl&&fsVal) fsVal.textContent=fontEl.value+'px';
   }
 
-  function drawHourglass(ratio, flowEnabled=true){
+  function drawHourglass(ratio, flowEnabled=true, animTimeSec=0){
     if(!hourglassCanvas) return;
     const dpr=window.devicePixelRatio||1;
     const rect=hourglassCanvas.getBoundingClientRect();
@@ -284,19 +275,59 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     hg.fillStyle=sandGrad;
 
     const topChamberTopY=topY+lipR;
-    const bottomChamberBottomY=bottomY-lipR;
-    const topChamberH=Math.max(1, neckY-topChamberTopY);
-    const bottomChamberH=Math.max(1, bottomChamberBottomY-neckY);
+    const bottomChamberBottomY=bottomY-1;
 
     const sandProgress=Math.max(0, Math.min(1, ratio));
-    const bottomSandCap=0.55;
-    const topFill=Math.max(0, Math.min(1, 1-Math.pow(sandProgress,0.92)));
-    if(topFill>0){
-      const topFillY=neckY-(topChamberH*topFill);
-      const topEdgeW=halfWidthAtY(topFillY);
+
+    // 2D 断面の「砂量」を数値積分して、上部減少量と下部増加量を一致させる。
+    const integrateWidth=(y0,y1,step=1)=>{
+      const a=Math.min(y0,y1), b=Math.max(y0,y1);
+      if(b-a<=0) return 0;
+      let area=0;
+      for(let y=a; y<b; y+=step){
+        const yNext=Math.min(b,y+step);
+        area += ((halfWidthAtY(y)+halfWidthAtY(yNext))*0.5*2) * (yNext-y);
+      }
+      return area;
+    };
+    const solveFillTopY=(targetArea)=>{
+      if(targetArea<=0) return neckY;
+      const fullArea=integrateWidth(topChamberTopY, neckY);
+      if(targetArea>=fullArea) return topChamberTopY;
+      let lo=topChamberTopY, hi=neckY;
+      for(let i=0;i<24;i++){
+        const mid=(lo+hi)/2;
+        const area=integrateWidth(mid, neckY);
+        if(area>targetArea) lo=mid; else hi=mid;
+      }
+      return (lo+hi)/2;
+    };
+    const solveFillBottomY=(targetArea)=>{
+      const fullArea=integrateWidth(neckY, bottomChamberBottomY);
+      if(targetArea<=0) return bottomChamberBottomY;
+      if(targetArea>=fullArea) return neckY;
+      let lo=neckY, hi=bottomChamberBottomY;
+      for(let i=0;i<24;i++){
+        const mid=(lo+hi)/2;
+        const area=integrateWidth(mid, bottomChamberBottomY);
+        if(area>targetArea) lo=mid; else hi=mid;
+      }
+      return (lo+hi)/2;
+    };
+
+    const topCapacity=integrateWidth(topChamberTopY, neckY);
+    const bottomCapacity=integrateWidth(neckY, bottomChamberBottomY);
+    const transferable=Math.min(topCapacity, bottomCapacity);
+    const totalSandArea=transferable*0.7;
+    const movedArea=totalSandArea*sandProgress;
+    const topArea=Math.max(0, totalSandArea-movedArea);
+    const bottomArea=Math.max(0, movedArea);
+
+    if(topArea>0.5){
+      const topFillY=solveFillTopY(topArea);
       hg.beginPath();
-      hg.moveTo(cx-topEdgeW, topFillY);
-      hg.quadraticCurveTo(cx, topFillY - bowlH*0.08*topFill, cx+topEdgeW, topFillY);
+      hg.moveTo(cx-halfWidthAtY(topFillY), topFillY);
+      hg.lineTo(cx+halfWidthAtY(topFillY), topFillY);
       for(let y=topFillY; y<=neckY-1; y+=sideStep){
         hg.lineTo(cx+halfWidthAtY(y), y);
       }
@@ -308,18 +339,16 @@ window.makeFilename = makeFilename; // 念のため外にも公開
       hg.fill();
     }
 
-    const bottomFill=Math.max(0, Math.min(1, bottomSandCap*Math.pow(sandProgress,1.85)));
-    if(bottomFill>0){
-      const bottomFillY=bottomChamberBottomY-(bottomChamberH*bottomFill);
-      const bottomSandBaseY=bottomY-1;
+    if(bottomArea>0.5){
+      const bottomFillY=solveFillBottomY(bottomArea);
+      const bottomSandBaseY=bottomChamberBottomY;
       hg.beginPath();
       hg.moveTo(cx+halfWidthAtY(bottomSandBaseY), bottomSandBaseY);
-      for(let y=bottomSandBaseY; y>=bottomFillY+1; y-=sideStep){
+      for(let y=bottomSandBaseY; y>=bottomFillY; y-=sideStep){
         hg.lineTo(cx+halfWidthAtY(y), y);
       }
-      const topEdgeW=halfWidthAtY(bottomFillY+1);
-      hg.quadraticCurveTo(cx, bottomFillY - bowlH*0.06*bottomFill, cx-topEdgeW, bottomFillY+1);
-      for(let y=bottomFillY+1; y<=bottomSandBaseY; y+=sideStep){
+      hg.lineTo(cx-halfWidthAtY(bottomFillY), bottomFillY);
+      for(let y=bottomFillY; y<=bottomSandBaseY; y+=sideStep){
         hg.lineTo(cx-halfWidthAtY(y), y);
       }
       hg.closePath();
@@ -331,20 +360,21 @@ window.makeFilename = makeFilename; // 念のため外にも公開
       const streamH=bowlH*0.7;
       const streamTop=neckY-1;
       const impactY=neckY+bowlH*0.66;
-      const seed=ratio*173.0;
+      const streamTime=animTimeSec;
+      const seed=ratio*173.0 + streamTime*6.0;
 
       hg.fillStyle='rgba(248,208,107,.28)';
       hg.fillRect(cx-streamW*0.35, streamTop, streamW*0.7, streamH);
 
-      const grains=26;
+      const grains=28;
       for(let i=0;i<grains;i++){
-        const t=i/(grains-1||1);
+        const t=((streamTime*1.6)+(i/grains))%1;
         const y=streamTop+streamH*t;
         const phase=seed+i*2.37;
-        const sway=Math.sin(phase)*streamW*2.6 + Math.sin(phase*0.43)*streamW*1.4;
+        const sway=Math.sin(phase)*streamW*2.6 + Math.sin(phase*0.43+streamTime*3.2)*streamW*1.4;
         const r=Math.max(0.38, streamW*(0.34+0.26*Math.sin(seed+i*2.1)));
         hg.beginPath();
-        hg.fillStyle=`rgba(248,208,107,${0.22+0.46*(1-t)})`;
+        hg.fillStyle=`rgba(248,208,107,${0.26+0.42*(1-t)})`;
         hg.arc(cx+sway, y, r, 0, Math.PI*2);
         hg.fill();
       }
@@ -392,17 +422,17 @@ window.makeFilename = makeFilename; // 念のため外にも公開
   }
 
 
-  function updateHourglass(elapsedSec=0){
+  function updateHourglass(elapsedSec=0, nowMs=performance.now()){
     if(!hourglassWidget || !hourglassSel) return;
     const opacityRatio=Math.max(0.05, Math.min(0.6, (parseInt(hourglassOpacityEl?.value||'20',10)||20)/100));
     const limitSec=Math.max(0, parseInt(hourglassSel.value,10) || 0);
     hourglassWidget.style.opacity=String(opacityRatio);
     if(limitSec<=0){
-      drawHourglass(1, false);
+      drawHourglass(1, false, nowMs/1000);
       return;
     }
     const ratio=Math.max(0, Math.min(1, elapsedSec/limitSec));
-    drawHourglass(ratio, true);
+    drawHourglass(ratio, true, nowMs/1000);
   }
 
   function restoreSettings(){
@@ -464,7 +494,6 @@ window.makeFilename = makeFilename; // 念のため外にも公開
   restoreSettings();
   bindSettingControls();
   refreshUI();
-  syncHourglassViewportAnchor();
 
   // Stats
   let typingStart=null, statsTimer=null, baseChars=0, lastCountLen=0, elapsedCarrySec=0;
@@ -508,6 +537,21 @@ window.makeFilename = makeFilename; // 念のため外にも公開
   function getEffectiveElapsedSec(now=performance.now()){
     if(!typingStart) return elapsedCarrySec;
     return elapsedCarrySec + Math.max(0,(now-typingStart)/1000);
+  }
+
+  let hourglassAnimRaf=0;
+  function startHourglassAnimation(){
+    if(hourglassAnimRaf) return;
+    const tick=(now)=>{
+      updateHourglass(getEffectiveElapsedSec(now), now);
+      hourglassAnimRaf=requestAnimationFrame(tick);
+    };
+    hourglassAnimRaf=requestAnimationFrame(tick);
+  }
+  function stopHourglassAnimation(){
+    if(!hourglassAnimRaf) return;
+    cancelAnimationFrame(hourglassAnimRaf);
+    hourglassAnimRaf=0;
   }
 
   let autoResetSec=loadAuto(); autoResetSel.value=String(autoResetSec);
@@ -583,6 +627,13 @@ window.makeFilename = makeFilename; // 念のため外にも公開
   updateStats();
   updateHourglass(getEffectiveElapsedSec());
   addEventListener('resize', ()=>updateHourglass(getEffectiveElapsedSec()));
+  if(hourglassWidget){
+    startHourglassAnimation();
+    document.addEventListener('visibilitychange', ()=>{
+      if(document.hidden) stopHourglassAnimation();
+      else startHourglassAnimation();
+    });
+  }
 
   // Crack effect
   const cracks=[], flashes=[], holes=[];
