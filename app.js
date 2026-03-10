@@ -153,7 +153,7 @@ window.makeFilename = makeFilename; // 念のため外にも公開
   const saveWarn=(v)=>Persistence.saveNumWithCookie(LS.warn,CK.warn,v);
   const loadBad =()=>Persistence.loadNumWithCookie(LS.bad,CK.bad,110);
   const saveBad =(v)=>Persistence.saveNumWithCookie(LS.bad,CK.bad,v);
-  const loadWarm=()=>Persistence.loadNumWithCookie(LS.warm,CK.warm,12);
+  const loadWarm=()=>Persistence.loadNumWithCookie(LS.warm,CK.warm,10);
   const saveWarm=(v)=>Persistence.saveNumWithCookie(LS.warm,CK.warm,v);
   const loadFs  =()=>Persistence.loadNumWithCookie(LS.fs,CK.fs,16);
   const saveFs  =(v)=>Persistence.saveNumWithCookie(LS.fs,CK.fs,v);
