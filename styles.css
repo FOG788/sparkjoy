@@ -94,7 +94,11 @@
       transition:height .6s linear;
       z-index:1;
     }
-    .hourglass-top-sand{top:4%; height:40%; border-radius:24px 24px 18px 18px}
+    .hourglass-top-sand{
+      bottom:50%;
+      height:40%;
+      border-radius:18px 18px 24px 24px;
+    }
     .hourglass-bottom-sand{bottom:4%; height:0; border-radius:18px 18px 24px 24px}
     .hourglass-stream{
       position:absolute;
