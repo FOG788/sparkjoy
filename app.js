@@ -60,6 +60,7 @@ window.makeFilename = makeFilename; // 念のため外にも公開
   const $ = (id)=>document.getElementById(id);
   const editor=$('editor'), editorWrap=$('editorWrap'), saveBtn=$('saveBtn'), clearBtn=$('clearBtn'), copyBtn=$('copyBtn');
   const fontEl=$('fontSize'), fsVal=$('fsVal');
+  const measureEl=$('editorMeasure'), measureVal=$('measureVal');
   const intensityEl=$('intensity'), ival=$('ival'), toggleFx=$('toggleFx'), toggleSound=$('toggleSound');
   const soundVolEl=$('soundVol'), sval=$('sval'), realismEl=$('realism'), rval=$('rval'), reverbEl=$('reverb'), revval=$('revval');
   const jamEl=$('jam'), jamval=$('jamval');
@@ -95,9 +96,9 @@ window.makeFilename = makeFilename; // 念のため外にも公開
   }
 
   // Persistence helpers
-  const LS={high:'sj_highscore_sec',auto:'sj_auto_reset_sec',warn:'sj_warn_cpm',bad:'sj_bad_cpm',warm:'sj_warmup_sec',fs:'sj_font_px'};
+  const LS={high:'sj_highscore_sec',auto:'sj_auto_reset_sec',warn:'sj_warn_cpm',bad:'sj_bad_cpm',warm:'sj_warmup_sec',fs:'sj_font_px',measure:'sj_editor_measure'};
   const CK={
-    auto:'sj_auto_reset_sec',warn:'sj_warn_cpm',bad:'sj_bad_cpm',warm:'sj_warmup_sec',fs:'sj_font_px',
+    auto:'sj_auto_reset_sec',warn:'sj_warn_cpm',bad:'sj_bad_cpm',warm:'sj_warmup_sec',fs:'sj_font_px',measure:'sj_editor_measure',
     mode:'sj_mode',intensity:'sj_intensity',fx:'sj_fx',sound:'sj_sound',soundVol:'sj_sound_vol',
     realism:'sj_realism',reverb:'sj_reverb',jam:'sj_jam'
   };
@@ -149,6 +150,8 @@ window.makeFilename = makeFilename; // 念のため外にも公開
   const saveWarm=(v)=>Persistence.saveNumWithCookie(LS.warm,CK.warm,v);
   const loadFs  =()=>Persistence.loadNumWithCookie(LS.fs,CK.fs,16);
   const saveFs  =(v)=>Persistence.saveNumWithCookie(LS.fs,CK.fs,v);
+  const loadMeasure=()=>Persistence.loadNumWithCookie(LS.measure,CK.measure,88);
+  const saveMeasure=(v)=>Persistence.saveNumWithCookie(LS.measure,CK.measure,v);
 
   const sliderSettings=[
     {el:intensityEl,key:CK.intensity,out:ival,format:(v)=>v},
@@ -156,6 +159,7 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     {el:realismEl,key:CK.realism,out:rval,format:(v)=>v},
     {el:reverbEl,key:CK.reverb,out:revval,format:(v)=>v},
     {el:jamEl,key:CK.jam,out:jamval,format:(v)=>v},
+    {el:measureEl,key:CK.measure,out:measureVal,format:(v)=>v+'ch',persist:saveMeasure},
     {el:warnEl,key:CK.warn,out:warnVal,format:(v)=>v,persist:saveWarn},
     {el:badEl,key:CK.bad,out:badVal,format:(v)=>v,persist:saveBad},
     {el:warmupEl,key:CK.warm,out:warmVal,format:(v)=>v+'s',persist:saveWarm}
@@ -169,6 +173,11 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     const v = Math.max(10, Math.min(40, +px||16));
     if (editor) editor.style.fontSize = v + 'px';
     if (fsVal)  fsVal.textContent    = v + 'px';
+  }
+  function applyEditorMeasure(ch){
+    const v = Math.max(56, Math.min(110, +ch||88));
+    document.documentElement.style.setProperty('--editor-measure', v + 'ch');
+    if (measureVal) measureVal.textContent = v + 'ch';
   }
   function refreshUI(){
     sliderSettings.forEach(({el,out,format})=>{ out.textContent=format(el.value); });
@@ -185,16 +194,19 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     badEl.value=String(loadBad());
     warmupEl.value=String(loadWarm());
     if(fontEl) fontEl.value=String(loadFs());
+    if(measureEl) measureEl.value=String(loadMeasure());
     if(modeSel) modeSel.value=Persistence.loadChoice(CK.mode, modeSel.value || 'write');
     toggleSettings.forEach(({el,key})=>{
       el.checked=Persistence.loadChoice(key,el.checked ? '1' : '0')==='1';
     });
     applyFont(loadFs());
+    applyEditorMeasure(loadMeasure());
   }
   function bindSettingControls(){
     sliderSettings.forEach(({el,key,persist})=>{
       el.addEventListener('input',()=>{
         if(persist) persist(el.value);
+        if(el===measureEl) applyEditorMeasure(el.value);
         refreshUI();
       });
       if(!persist){
