@@ -97,14 +97,26 @@
     .hourglass-top-sand{
       bottom:50%;
       height:40%;
-      clip-path:polygon(4% 0, 96% 0, 86% 74%, 62% 100%, 38% 100%, 14% 74%);
-      border-radius:22px 22px 10px 10px;
+      clip-path:polygon(8% 0%, 92% 0%, 92% 62%, 50% 82%, 8% 62%);
+      border-radius:22px 22px 16px 16px;
     }
     .hourglass-bottom-sand{
       bottom:4%;
       height:0;
-      clip-path:polygon(35% 0, 65% 0, 94% 100%, 6% 100%);
-      border-radius:8px 8px 22px 22px;
+      clip-path:polygon(
+        8% 100%,
+        8% 38%,
+        34% 38%,
+        42% 30%,
+        46% 22%,
+        50% 20%,
+        54% 22%,
+        58% 30%,
+        66% 38%,
+        92% 38%,
+        92% 100%
+      );
+      border-radius:16px 16px 22px 22px;
     }
     .hourglass-stream{
       position:absolute;
