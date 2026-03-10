@@ -289,7 +289,7 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     const bottomChamberH=Math.max(1, bottomChamberBottomY-neckY);
 
     const sandProgress=Math.max(0, Math.min(1, ratio));
-    const bottomSandCap=0.8;
+    const bottomSandCap=0.55;
     const topFill=Math.max(0, Math.min(1, 1-Math.pow(sandProgress,0.92)));
     if(topFill>0){
       const topFillY=neckY-(topChamberH*topFill);
@@ -308,7 +308,7 @@ window.makeFilename = makeFilename; // 念のため外にも公開
       hg.fill();
     }
 
-    const bottomFill=Math.max(0, Math.min(1, bottomSandCap*Math.pow(sandProgress,1.42)));
+    const bottomFill=Math.max(0, Math.min(1, bottomSandCap*Math.pow(sandProgress,1.85)));
     if(bottomFill>0){
       const bottomFillY=bottomChamberBottomY-(bottomChamberH*bottomFill);
       const bottomSandBaseY=bottomY-1;
