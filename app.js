@@ -327,28 +327,48 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     }
 
     if(flowEnabled && ratio>0 && ratio<1){
-      const streamW=Math.max(0.75, w*0.0026);
-      const streamH=bowlH*0.66;
+      const streamW=Math.max(0.6, w*0.0022);
+      const streamH=bowlH*0.7;
       const streamTop=neckY-1;
-      hg.fillStyle='rgba(248,208,107,.55)';
-      hg.fillRect(cx-streamW/2, streamTop, streamW, streamH);
+      const impactY=neckY+bowlH*0.66;
+      const seed=ratio*173.0;
 
-      const grains=14;
-      const seed=ratio*137.0;
+      hg.fillStyle='rgba(248,208,107,.28)';
+      hg.fillRect(cx-streamW*0.35, streamTop, streamW*0.7, streamH);
+
+      const grains=26;
       for(let i=0;i<grains;i++){
         const t=i/(grains-1||1);
         const y=streamTop+streamH*t;
-        const sway=Math.sin((seed+i*1.73)*2.6)*streamW*1.7;
-        const r=Math.max(0.55, streamW*(0.45+0.35*Math.sin(seed+i*3.1)));
+        const phase=seed+i*2.37;
+        const sway=Math.sin(phase)*streamW*2.6 + Math.sin(phase*0.43)*streamW*1.4;
+        const r=Math.max(0.38, streamW*(0.34+0.26*Math.sin(seed+i*2.1)));
         hg.beginPath();
-        hg.fillStyle=`rgba(248,208,107,${0.28+0.34*(1-t)})`;
+        hg.fillStyle=`rgba(248,208,107,${0.22+0.46*(1-t)})`;
         hg.arc(cx+sway, y, r, 0, Math.PI*2);
         hg.fill();
       }
 
+      const sinkDepth=Math.max(10, bowlH*0.3);
+      const sinkW=Math.max(0.7, streamW*1.1);
+      const sinkBottomY=Math.min(bottomY-2, impactY+sinkDepth);
       hg.beginPath();
-      hg.fillStyle='rgba(248,208,107,.65)';
-      hg.ellipse(cx, neckY+bowlH*0.66, 2.2, 1.6, 0, 0, Math.PI*2);
+      hg.fillStyle='rgba(233,173,79,.26)';
+      hg.moveTo(cx-sinkW, impactY);
+      hg.lineTo(cx+sinkW, impactY);
+      hg.lineTo(cx+sinkW*0.55, sinkBottomY);
+      hg.lineTo(cx-sinkW*0.55, sinkBottomY);
+      hg.closePath();
+      hg.fill();
+
+      hg.beginPath();
+      hg.fillStyle='rgba(248,208,107,.78)';
+      hg.ellipse(cx, impactY, 2.0, 1.35, 0, 0, Math.PI*2);
+      hg.fill();
+
+      hg.beginPath();
+      hg.fillStyle='rgba(248,208,107,.42)';
+      hg.ellipse(cx, sinkBottomY-1, 1.25, 0.95, 0, 0, Math.PI*2);
       hg.fill();
     }
     hg.restore();
