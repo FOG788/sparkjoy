@@ -182,7 +182,7 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     if (fsVal)  fsVal.textContent    = v + 'px';
   }
   function applyEditorMeasure(ch){
-    const v = Math.max(100, Math.min(160, +ch||120));
+    const v = Math.max(100, Math.min(200, +ch||120));
     document.documentElement.style.setProperty('--editor-measure', v + 'ch');
     if (measureVal) measureVal.textContent = v + 'ch';
   }
