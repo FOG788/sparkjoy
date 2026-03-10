@@ -49,9 +49,9 @@
       right:0;
       top:0;
       bottom:0;
-      width:25%;
-      min-width:180px;
-      max-width:420px;
+      width:34%;
+      min-width:260px;
+      max-width:620px;
       padding:14px 18px;
       border-left:1px solid rgba(255,255,255,.1);
       background:linear-gradient(270deg, rgba(18,26,38,.55), rgba(18,26,38,.2) 50%, rgba(18,26,38,0));
@@ -62,9 +62,9 @@
       z-index:2;
     }
     .hourglass-canvas{
-      width:min(88%, 280px);
+      width:min(98%, 400px);
       height:100%;
-      max-height:520px;
+      max-height:760px;
       filter:drop-shadow(0 8px 20px rgba(0,0,0,.28));
     }
     body.tab-guide #hourglassWidget{display:none}
