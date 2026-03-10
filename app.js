@@ -297,9 +297,8 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     const totalWords=text.trim()?text.trim().split(/\s+/).length:0; if(wordCountEl) wordCountEl.textContent=String(totalWords);
     const now=performance.now(); if(typingStart && autoResetSec>0 && (now-lastInputAt)>autoResetSec*1000){ endSession('idle'); }
     if(!typingStart){
-      const sessionChars=Math.max(0, totalLen-baseChars);
-      const avgCpm=Math.round(sessionChars*60/Math.max(1, elapsedCarrySec));
-      const avgWpm=Math.round((sessionChars/5)*60/Math.max(1, elapsedCarrySec));
+      const avgCpm=Math.round(totalLen*60/Math.max(1, elapsedCarrySec));
+      const avgWpm=Math.round((totalLen/5)*60/Math.max(1, elapsedCarrySec));
       elapsedEl&&(elapsedEl.textContent=formatTime(elapsedCarrySec));
       cpmEl&&(cpmEl.textContent='0');
       cpmAvgEl&&(cpmAvgEl.textContent=String(avgCpm));
@@ -313,9 +312,8 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     const cutoff=now-ROLL_MS; while(cDeltaBuf.length && cDeltaBuf[0].t<cutoff){ cDeltaBuf.shift(); }
     let sum=0; for(const s of cDeltaBuf){ sum+=s.c; }
     const spanSec=Math.max(1, Math.min(ROLL_MS/1000, elapsed)); const cpm=Math.round(sum*60/spanSec);
-    const sessionChars=Math.max(0, totalLen-baseChars);
-    const avgCpm=Math.round(sessionChars*60/Math.max(1, elapsed));
-    const avgWpm=Math.round((sessionChars/5)*60/Math.max(1, elapsed));
+    const avgCpm=Math.round(totalLen*60/Math.max(1, elapsed));
+    const avgWpm=Math.round((totalLen/5)*60/Math.max(1, elapsed));
     cpmEl&&(cpmEl.textContent=String(cpm));
     cpmAvgEl&&(cpmAvgEl.textContent=String(avgCpm));
     wpmAvgEl&&(wpmAvgEl.textContent=String(avgWpm));
