@@ -202,6 +202,10 @@ function refreshUI(){ ival.textContent=intensityEl.value; sval.textContent=sound
     const announce=opts.announce!==false;
     if(elapsedSec>highSec){ highSec=elapsedSec|0; saveHigh(highSec); showHigh(); if(announce) toast('ハイスコア更新: '+formatTime(highSec)); }
   }
+  function reduceHigh(sec){
+    const next=Math.max(0, (highSec|0)-Math.max(0,sec|0));
+    if(next!==highSec){ highSec=next; saveHigh(highSec); showHigh(); }
+  }
 
   function getEffectiveElapsedSec(now=performance.now()){
     if(!typingStart) return elapsedCarrySec;
@@ -213,11 +217,13 @@ function refreshUI(){ ival.textContent=intensityEl.value; sval.textContent=sound
 
   function endSession(reason){
     const now=performance.now();
+    let idlePenaltySec=0;
     if(typingStart){
       const elapsedNow=Math.max(0,(now-typingStart)/1000);
       if(reason==='idle' && autoResetSec>0){
         // 無操作猶予ぶんだけ差し引いた実質経過時間を保持する
         elapsedCarrySec += Math.max(0, elapsedNow-autoResetSec);
+        idlePenaltySec=autoResetSec;
       } else {
         elapsedCarrySec = 0;
       }
@@ -227,7 +233,12 @@ function refreshUI(){ ival.textContent=intensityEl.value; sval.textContent=sound
     } else if(reason!=='idle'){
       elapsedCarrySec = 0;
     }
-    typingStart=null; baseChars=0; cDeltaBuf.length=0; activityBuf.fill(false);
+    if(reason==='idle' && idlePenaltySec>0){
+      reduceHigh(idlePenaltySec);
+    }
+    typingStart=null;
+    if(reason!=='idle') baseChars=0;
+    cDeltaBuf.length=0; activityBuf.fill(false);
     lastCountLen=sanitizeText(editor.innerText||'').length; updateStats();
     window.__lastSpeedLevel='none'; window.__lastShakeAt=0; setAura(null);
     if(reason==='idle'&&autoResetSec>0) toast('無操作でセッションをリセット');
@@ -237,7 +248,18 @@ function refreshUI(){ ival.textContent=intensityEl.value; sval.textContent=sound
     const text=sanitizeText(editor.innerText||''); const totalLen=text.length; if(charCountEl) charCountEl.textContent=String(totalLen);
     const totalWords=text.trim()?text.trim().split(/\s+/).length:0; if(wordCountEl) wordCountEl.textContent=String(totalWords);
     const now=performance.now(); if(typingStart && autoResetSec>0 && (now-lastInputAt)>autoResetSec*1000){ endSession('idle'); }
-    if(!typingStart){ elapsedEl&&(elapsedEl.textContent=formatTime(elapsedCarrySec)); cpmEl&&(cpmEl.textContent='0'); cpmAvgEl&&(cpmAvgEl.textContent='0'); wpmAvgEl&&(wpmAvgEl.textContent='0'); idlePctEl&&(idlePctEl.textContent='0%'); setChipClass(idleChip,null); setChipClass(cpmEl&&cpmEl.parentElement,null); return; }
+    if(!typingStart){
+      const sessionChars=Math.max(0, totalLen-baseChars);
+      const avgCpm=Math.round(sessionChars*60/Math.max(1, elapsedCarrySec));
+      const avgWpm=Math.round((sessionChars/5)*60/Math.max(1, elapsedCarrySec));
+      elapsedEl&&(elapsedEl.textContent=formatTime(elapsedCarrySec));
+      cpmEl&&(cpmEl.textContent='0');
+      cpmAvgEl&&(cpmAvgEl.textContent=String(avgCpm));
+      wpmAvgEl&&(wpmAvgEl.textContent=String(avgWpm));
+      idlePctEl&&(idlePctEl.textContent='0%');
+      setChipClass(idleChip,null); setChipClass(cpmEl&&cpmEl.parentElement,null);
+      return;
+    }
     const elapsed=getEffectiveElapsedSec(now); elapsedEl&&(elapsedEl.textContent=formatTime(elapsed));
     updateHigh(elapsed,{announce:false});
     const cutoff=now-ROLL_MS; while(cDeltaBuf.length && cDeltaBuf[0].t<cutoff){ cDeltaBuf.shift(); }
