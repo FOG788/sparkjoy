@@ -70,6 +70,12 @@ window.makeFilename = makeFilename; // 念のため外にも公開
   const aura=$('aura'), canvas=$('fx'), ctx=canvas.getContext('2d');
   const tabs=document.querySelectorAll('#tabs .tab'), autoResetSel=$('autoReset');
   const hourglassSel=$('hourglassDuration'), hourglassWidget=$('hourglassWidget'), hourglassCanvas=$('hourglassCanvas');
+
+  function syncHourglassViewportAnchor(){
+    if(!hourglassWidget || !editorWrap) return;
+    const y=editorWrap.scrollTop||0;
+    hourglassWidget.style.transform=`translateY(${y}px)`;
+  }
   const hourglassOpacityEl=$('hourglassOpacity'), hourglassOpacityVal=$('hourglassOpacityVal');
   const warnEl=$('warnTh'), badEl=$('badTh'), warmupEl=$('warmupSec'), warnVal=$('warnVal'), badVal=$('badVal'), warmVal=$('warmVal');
   
@@ -77,6 +83,10 @@ window.makeFilename = makeFilename; // 念のため外にも公開
   // Canvas DPR
   function resizeCanvas(){ const DPR=window.devicePixelRatio||1; canvas.width=innerWidth*DPR|0; canvas.height=innerHeight*DPR|0; canvas.style.width=innerWidth+'px'; canvas.style.height=innerHeight+'px'; ctx.setTransform(DPR,0,0,DPR,0,0); }
   addEventListener('resize', resizeCanvas); resizeCanvas();
+  addEventListener('resize', syncHourglassViewportAnchor);
+  if(editorWrap){
+    editorWrap.addEventListener('scroll', syncHourglassViewportAnchor, {passive:true});
+  }
 
   // Tabs
   tabs.forEach(btn=>btn.addEventListener('click',()=>{tabs.forEach(b=>b.classList.remove('active'));btn.classList.add('active');const tab=btn.dataset.tab;document.body.classList.toggle('tab-settings',tab==='settings');document.body.classList.toggle('tab-guide',tab==='guide');document.body.classList.toggle('tab-editor',tab==='editor');}));
@@ -278,7 +288,8 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     const topChamberH=Math.max(1, neckY-topChamberTopY);
     const bottomChamberH=Math.max(1, bottomChamberBottomY-neckY);
 
-    const topFill=Math.max(0, Math.min(1, 1-ratio));
+    const sandProgress=Math.max(0, Math.min(1, ratio));
+    const topFill=Math.max(0, Math.min(1, 1-Math.pow(sandProgress,0.92)));
     if(topFill>0){
       const topFillY=neckY-(topChamberH*topFill);
       const topEdgeW=halfWidthAtY(topFillY);
@@ -296,16 +307,16 @@ window.makeFilename = makeFilename; // 念のため外にも公開
       hg.fill();
     }
 
-    const bottomFill=Math.max(0, Math.min(1, ratio));
+    const bottomFill=Math.max(0, Math.min(1, Math.pow(sandProgress,1.42)));
     if(bottomFill>0){
       const bottomFillY=bottomChamberBottomY-(bottomChamberH*bottomFill);
       hg.beginPath();
-      hg.moveTo(cx-halfWidthAtY(bottomChamberBottomY), bottomChamberBottomY);
-      hg.quadraticCurveTo(cx, bottomChamberBottomY - bowlH*0.09*bottomFill, cx+halfWidthAtY(bottomChamberBottomY), bottomChamberBottomY);
+      hg.moveTo(cx+halfWidthAtY(bottomChamberBottomY), bottomChamberBottomY);
       for(let y=bottomChamberBottomY; y>=bottomFillY+1; y-=sideStep){
         hg.lineTo(cx+halfWidthAtY(y), y);
       }
-      hg.lineTo(cx-halfWidthAtY(bottomFillY+1), bottomFillY+1);
+      const topEdgeW=halfWidthAtY(bottomFillY+1);
+      hg.quadraticCurveTo(cx, bottomFillY - bowlH*0.08*bottomFill, cx-topEdgeW, bottomFillY+1);
       for(let y=bottomFillY+1; y<=bottomChamberBottomY; y+=sideStep){
         hg.lineTo(cx-halfWidthAtY(y), y);
       }
@@ -413,6 +424,7 @@ window.makeFilename = makeFilename; // 念のため外にも公開
   restoreSettings();
   bindSettingControls();
   refreshUI();
+  syncHourglassViewportAnchor();
 
   // Stats
   let typingStart=null, statsTimer=null, baseChars=0, lastCountLen=0, elapsedCarrySec=0;
