@@ -221,7 +221,9 @@ function refreshUI(){ ival.textContent=intensityEl.value; sval.textContent=sound
       } else {
         elapsedCarrySec = 0;
       }
-      updateHigh(getEffectiveElapsedSec(now));
+      if(reason!=='idle'){
+        updateHigh(getEffectiveElapsedSec(now));
+      }
     } else if(reason!=='idle'){
       elapsedCarrySec = 0;
     }
