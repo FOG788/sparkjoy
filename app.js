@@ -213,28 +213,50 @@ window.makeFilename = makeFilename; // 念のため外にも公開
 
     const cx=w/2;
     const pad=Math.min(w,h)*0.09;
-    const neckW=Math.max(9, w*0.052);
+    const neckW=Math.max(3, w*0.014);
     const bowlW=w*0.34;
     const lipR=Math.max(7, w*0.06);
     const topY=pad;
     const neckY=h/2;
     const bottomY=h-pad;
     const bowlH=(h-pad*2)*0.38;
+    const stemH=Math.max(20, bowlH*0.28);
+    const topStemY=topY+lipR+stemH;
+    const bottomStemY=bottomY-lipR-stemH;
+
+    const sideStep=2;
+    const smooth=(t)=>{
+      const x=Math.max(0,Math.min(1,t));
+      return x*x*(3-2*x);
+    };
+    const halfWidthAtY=(y)=>{
+      if(y<=topStemY) return bowlW;
+      if(y<neckY){
+        const t=(y-topStemY)/Math.max(1, neckY-topStemY);
+        return bowlW-(bowlW-neckW)*smooth(t);
+      }
+      if(y<bottomStemY){
+        const t=(y-neckY)/Math.max(1, bottomStemY-neckY);
+        return neckW+(bowlW-neckW)*smooth(t);
+      }
+      return bowlW;
+    };
 
     const glassPath=new Path2D();
-    glassPath.moveTo(cx-bowlW, topY+lipR);
-    glassPath.quadraticCurveTo(cx-bowlW, topY, cx-bowlW+lipR, topY);
+    glassPath.moveTo(cx-bowlW+lipR, topY);
     glassPath.lineTo(cx+bowlW-lipR, topY);
     glassPath.quadraticCurveTo(cx+bowlW, topY, cx+bowlW, topY+lipR);
-    glassPath.bezierCurveTo(cx+bowlW, topY+bowlH*0.36, cx+neckW*2.6, neckY-bowlH*0.12, cx+neckW, neckY);
-    glassPath.bezierCurveTo(cx+neckW*2.6, neckY+bowlH*0.12, cx+bowlW, bottomY-bowlH*0.36, cx+bowlW, bottomY-lipR);
+    for(let y=topY+lipR; y<=bottomY-lipR; y+=sideStep){
+      glassPath.lineTo(cx+halfWidthAtY(y), y);
+    }
     glassPath.quadraticCurveTo(cx+bowlW, bottomY, cx+bowlW-lipR, bottomY);
     glassPath.lineTo(cx-bowlW+lipR, bottomY);
     glassPath.quadraticCurveTo(cx-bowlW, bottomY, cx-bowlW, bottomY-lipR);
-    glassPath.bezierCurveTo(cx-bowlW, bottomY-bowlH*0.36, cx-neckW*2.6, neckY+bowlH*0.12, cx-neckW, neckY);
-    glassPath.bezierCurveTo(cx-neckW*2.6, neckY-bowlH*0.12, cx-bowlW, topY+bowlH*0.36, cx-bowlW, topY+lipR);
+    for(let y=bottomY-lipR; y>=topY+lipR; y-=sideStep){
+      glassPath.lineTo(cx-halfWidthAtY(y), y);
+    }
+    glassPath.quadraticCurveTo(cx-bowlW, topY, cx-bowlW+lipR, topY);
     glassPath.closePath();
-
     const glassGrad=hg.createLinearGradient(0,topY,0,bottomY);
     glassGrad.addColorStop(0,'rgba(255,255,255,.14)');
     glassGrad.addColorStop(0.5,'rgba(255,255,255,.06)');
@@ -251,28 +273,42 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     sandGrad.addColorStop(1,'#d98d2f');
     hg.fillStyle=sandGrad;
 
+    const topChamberTopY=topY+lipR;
+    const bottomChamberBottomY=bottomY-lipR;
+    const topChamberH=Math.max(1, neckY-topChamberTopY);
+    const bottomChamberH=Math.max(1, bottomChamberBottomY-neckY);
+
     const topFill=Math.max(0, Math.min(1, 1-ratio));
     if(topFill>0){
-      const topFillY=topY + (bowlH*(1-topFill));
+      const topFillY=neckY-(topChamberH*topFill);
+      const topEdgeW=halfWidthAtY(topFillY);
       hg.beginPath();
-      hg.moveTo(cx-bowlW*0.9, topFillY);
-      hg.quadraticCurveTo(cx, topFillY - bowlH*0.12*topFill, cx+bowlW*0.9, topFillY);
-      hg.bezierCurveTo(cx+bowlW*0.65, topFillY+bowlH*0.22, cx+neckW*1.45, neckY-4, cx+neckW, neckY-1);
-      hg.lineTo(cx-neckW, neckY-1);
-      hg.bezierCurveTo(cx-neckW*1.45, neckY-4, cx-bowlW*0.65, topFillY+bowlH*0.22, cx-bowlW*0.9, topFillY);
+      hg.moveTo(cx-topEdgeW, topFillY);
+      hg.quadraticCurveTo(cx, topFillY - bowlH*0.08*topFill, cx+topEdgeW, topFillY);
+      for(let y=topFillY; y<=neckY-1; y+=sideStep){
+        hg.lineTo(cx+halfWidthAtY(y), y);
+      }
+      hg.lineTo(cx-halfWidthAtY(neckY-1), neckY-1);
+      for(let y=neckY-1; y>=topFillY; y-=sideStep){
+        hg.lineTo(cx-halfWidthAtY(y), y);
+      }
       hg.closePath();
       hg.fill();
     }
 
     const bottomFill=Math.max(0, Math.min(1, ratio));
     if(bottomFill>0){
-      const bottomFillY=bottomY - (bowlH*bottomFill);
+      const bottomFillY=bottomChamberBottomY-(bottomChamberH*bottomFill);
       hg.beginPath();
-      hg.moveTo(cx-bowlW*0.9, bottomY-1);
-      hg.bezierCurveTo(cx-bowlW*0.7, bottomFillY+bowlH*0.22, cx-neckW*1.45, bottomFillY+4, cx-neckW, bottomFillY+1);
-      hg.lineTo(cx+neckW, bottomFillY+1);
-      hg.bezierCurveTo(cx+neckW*1.45, bottomFillY+4, cx+bowlW*0.7, bottomFillY+bowlH*0.22, cx+bowlW*0.9, bottomY-1);
-      hg.quadraticCurveTo(cx, bottomY - bowlH*0.11*bottomFill, cx-bowlW*0.9, bottomY-1);
+      hg.moveTo(cx-halfWidthAtY(bottomChamberBottomY), bottomChamberBottomY);
+      hg.quadraticCurveTo(cx, bottomChamberBottomY - bowlH*0.09*bottomFill, cx+halfWidthAtY(bottomChamberBottomY), bottomChamberBottomY);
+      for(let y=bottomChamberBottomY; y>=bottomFillY+1; y-=sideStep){
+        hg.lineTo(cx+halfWidthAtY(y), y);
+      }
+      hg.lineTo(cx-halfWidthAtY(bottomFillY+1), bottomFillY+1);
+      for(let y=bottomFillY+1; y<=bottomChamberBottomY; y+=sideStep){
+        hg.lineTo(cx-halfWidthAtY(y), y);
+      }
       hg.closePath();
       hg.fill();
     }
@@ -291,8 +327,8 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     hg.stroke(glassPath);
 
     hg.beginPath();
-    hg.moveTo(cx-neckW*1.35, neckY);
-    hg.lineTo(cx+neckW*1.35, neckY);
+    hg.moveTo(cx-neckW*0.95, neckY);
+    hg.lineTo(cx+neckW*0.95, neckY);
     hg.strokeStyle='rgba(224,235,247,.52)';
     hg.stroke();
 
