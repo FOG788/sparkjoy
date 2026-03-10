@@ -289,7 +289,8 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     const bottomChamberH=Math.max(1, bottomChamberBottomY-neckY);
 
     const sandProgress=Math.max(0, Math.min(1, ratio));
-    const topFill=Math.max(0, Math.min(1, 1-Math.pow(sandProgress,0.92)));
+    const totalSand=0.8;
+    const topFill=Math.max(0, Math.min(1, totalSand*(1-Math.pow(sandProgress,0.92))));
     if(topFill>0){
       const topFillY=neckY-(topChamberH*topFill);
       const topEdgeW=halfWidthAtY(topFillY);
@@ -307,17 +308,18 @@ window.makeFilename = makeFilename; // 念のため外にも公開
       hg.fill();
     }
 
-    const bottomFill=Math.max(0, Math.min(1, Math.pow(sandProgress,1.42)));
+    const bottomFill=Math.max(0, Math.min(1, totalSand*Math.pow(sandProgress,1.42)));
     if(bottomFill>0){
       const bottomFillY=bottomChamberBottomY-(bottomChamberH*bottomFill);
+      const bottomSandBaseY=bottomY-1;
       hg.beginPath();
-      hg.moveTo(cx+halfWidthAtY(bottomChamberBottomY), bottomChamberBottomY);
-      for(let y=bottomChamberBottomY; y>=bottomFillY+1; y-=sideStep){
+      hg.moveTo(cx+halfWidthAtY(bottomSandBaseY), bottomSandBaseY);
+      for(let y=bottomSandBaseY; y>=bottomFillY+1; y-=sideStep){
         hg.lineTo(cx+halfWidthAtY(y), y);
       }
       const topEdgeW=halfWidthAtY(bottomFillY+1);
-      hg.quadraticCurveTo(cx, bottomFillY - bowlH*0.08*bottomFill, cx-topEdgeW, bottomFillY+1);
-      for(let y=bottomFillY+1; y<=bottomChamberBottomY; y+=sideStep){
+      hg.quadraticCurveTo(cx, bottomFillY - bowlH*0.06*bottomFill, cx-topEdgeW, bottomFillY+1);
+      for(let y=bottomFillY+1; y<=bottomSandBaseY; y+=sideStep){
         hg.lineTo(cx-halfWidthAtY(y), y);
       }
       hg.closePath();
@@ -326,9 +328,11 @@ window.makeFilename = makeFilename; // 念のため外にも公開
 
     if(flowEnabled && ratio>0 && ratio<1){
       hg.fillStyle='rgba(248,208,107,.95)';
-      hg.fillRect(cx-1.25, neckY-1, 2.5, bowlH*0.32);
+      const streamW=Math.max(1.1, w*0.0042);
+      const streamH=bowlH*0.56;
+      hg.fillRect(cx-streamW/2, neckY-1, streamW, streamH);
       hg.beginPath();
-      hg.ellipse(cx, neckY+bowlH*0.34, 5, 3.4, 0, 0, Math.PI*2);
+      hg.ellipse(cx, neckY+bowlH*0.58, 3.2, 2.2, 0, 0, Math.PI*2);
       hg.fill();
     }
     hg.restore();
