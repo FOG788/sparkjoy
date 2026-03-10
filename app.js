@@ -289,8 +289,8 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     const bottomChamberH=Math.max(1, bottomChamberBottomY-neckY);
 
     const sandProgress=Math.max(0, Math.min(1, ratio));
-    const totalSand=0.8;
-    const topFill=Math.max(0, Math.min(1, totalSand*(1-Math.pow(sandProgress,0.92))));
+    const bottomSandCap=0.8;
+    const topFill=Math.max(0, Math.min(1, 1-Math.pow(sandProgress,0.92)));
     if(topFill>0){
       const topFillY=neckY-(topChamberH*topFill);
       const topEdgeW=halfWidthAtY(topFillY);
@@ -308,7 +308,7 @@ window.makeFilename = makeFilename; // 念のため外にも公開
       hg.fill();
     }
 
-    const bottomFill=Math.max(0, Math.min(1, totalSand*Math.pow(sandProgress,1.42)));
+    const bottomFill=Math.max(0, Math.min(1, bottomSandCap*Math.pow(sandProgress,1.42)));
     if(bottomFill>0){
       const bottomFillY=bottomChamberBottomY-(bottomChamberH*bottomFill);
       const bottomSandBaseY=bottomY-1;
@@ -327,12 +327,28 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     }
 
     if(flowEnabled && ratio>0 && ratio<1){
-      hg.fillStyle='rgba(248,208,107,.95)';
-      const streamW=Math.max(1.1, w*0.0042);
-      const streamH=bowlH*0.56;
-      hg.fillRect(cx-streamW/2, neckY-1, streamW, streamH);
+      const streamW=Math.max(0.75, w*0.0026);
+      const streamH=bowlH*0.66;
+      const streamTop=neckY-1;
+      hg.fillStyle='rgba(248,208,107,.55)';
+      hg.fillRect(cx-streamW/2, streamTop, streamW, streamH);
+
+      const grains=14;
+      const seed=ratio*137.0;
+      for(let i=0;i<grains;i++){
+        const t=i/(grains-1||1);
+        const y=streamTop+streamH*t;
+        const sway=Math.sin((seed+i*1.73)*2.6)*streamW*1.7;
+        const r=Math.max(0.55, streamW*(0.45+0.35*Math.sin(seed+i*3.1)));
+        hg.beginPath();
+        hg.fillStyle=`rgba(248,208,107,${0.28+0.34*(1-t)})`;
+        hg.arc(cx+sway, y, r, 0, Math.PI*2);
+        hg.fill();
+      }
+
       hg.beginPath();
-      hg.ellipse(cx, neckY+bowlH*0.58, 3.2, 2.2, 0, 0, Math.PI*2);
+      hg.fillStyle='rgba(248,208,107,.65)';
+      hg.ellipse(cx, neckY+bowlH*0.66, 2.2, 1.6, 0, 0, Math.PI*2);
       hg.fill();
     }
     hg.restore();
