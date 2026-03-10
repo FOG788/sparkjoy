@@ -97,9 +97,15 @@
     .hourglass-top-sand{
       bottom:50%;
       height:40%;
-      border-radius:18px 18px 24px 24px;
+      clip-path:polygon(6% 0, 94% 0, 64% 100%, 36% 100%);
+      border-radius:20px 20px 0 0;
     }
-    .hourglass-bottom-sand{bottom:4%; height:0; border-radius:18px 18px 24px 24px}
+    .hourglass-bottom-sand{
+      bottom:4%;
+      height:0;
+      clip-path:polygon(36% 0, 64% 0, 94% 100%, 6% 100%);
+      border-radius:0 0 20px 20px;
+    }
     .hourglass-stream{
       position:absolute;
       left:50%;
