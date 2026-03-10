@@ -69,8 +69,7 @@ window.makeFilename = makeFilename; // 念のため外にも公開
   const editorVersionEl=$('editorVersion');
   const aura=$('aura'), canvas=$('fx'), ctx=canvas.getContext('2d');
   const tabs=document.querySelectorAll('#tabs .tab'), autoResetSel=$('autoReset');
-  const hourglassSel=$('hourglassDuration'), hourglassWidget=$('hourglassWidget');
-  const hourglassTopSand=document.querySelector('.hourglass-top-sand'), hourglassBottomSand=document.querySelector('.hourglass-bottom-sand'), hourglassStream=document.querySelector('.hourglass-stream');
+  const hourglassSel=$('hourglassDuration'), hourglassWidget=$('hourglassWidget'), hourglassCanvas=$('hourglassCanvas');
   const hourglassOpacityEl=$('hourglassOpacity'), hourglassOpacityVal=$('hourglassOpacityVal');
   const warnEl=$('warnTh'), badEl=$('badTh'), warmupEl=$('warmupSec'), warnVal=$('warnVal'), badVal=$('badVal'), warmVal=$('warmVal');
   
@@ -199,23 +198,124 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     if(fontEl&&fsVal) fsVal.textContent=fontEl.value+'px';
   }
 
+  function drawHourglass(ratio, flowEnabled=true){
+    if(!hourglassCanvas) return;
+    const dpr=window.devicePixelRatio||1;
+    const rect=hourglassCanvas.getBoundingClientRect();
+    const w=Math.max(120, Math.round(rect.width||260));
+    const h=Math.max(200, Math.round(rect.height||420));
+    hourglassCanvas.width=Math.round(w*dpr);
+    hourglassCanvas.height=Math.round(h*dpr);
+
+    const hg=hourglassCanvas.getContext('2d');
+    hg.setTransform(dpr,0,0,dpr,0,0);
+    hg.clearRect(0,0,w,h);
+
+    const cx=w/2;
+    const pad=Math.min(w,h)*0.09;
+    const neckW=Math.max(9, w*0.052);
+    const bowlW=w*0.34;
+    const lipR=Math.max(7, w*0.06);
+    const topY=pad;
+    const neckY=h/2;
+    const bottomY=h-pad;
+    const bowlH=(h-pad*2)*0.38;
+
+    const glassPath=new Path2D();
+    glassPath.moveTo(cx-bowlW, topY+lipR);
+    glassPath.quadraticCurveTo(cx-bowlW, topY, cx-bowlW+lipR, topY);
+    glassPath.lineTo(cx+bowlW-lipR, topY);
+    glassPath.quadraticCurveTo(cx+bowlW, topY, cx+bowlW, topY+lipR);
+    glassPath.bezierCurveTo(cx+bowlW, topY+bowlH*0.36, cx+neckW*2.6, neckY-bowlH*0.12, cx+neckW, neckY);
+    glassPath.bezierCurveTo(cx+neckW*2.6, neckY+bowlH*0.12, cx+bowlW, bottomY-bowlH*0.36, cx+bowlW, bottomY-lipR);
+    glassPath.quadraticCurveTo(cx+bowlW, bottomY, cx+bowlW-lipR, bottomY);
+    glassPath.lineTo(cx-bowlW+lipR, bottomY);
+    glassPath.quadraticCurveTo(cx-bowlW, bottomY, cx-bowlW, bottomY-lipR);
+    glassPath.bezierCurveTo(cx-bowlW, bottomY-bowlH*0.36, cx-neckW*2.6, neckY+bowlH*0.12, cx-neckW, neckY);
+    glassPath.bezierCurveTo(cx-neckW*2.6, neckY-bowlH*0.12, cx-bowlW, topY+bowlH*0.36, cx-bowlW, topY+lipR);
+    glassPath.closePath();
+
+    const glassGrad=hg.createLinearGradient(0,topY,0,bottomY);
+    glassGrad.addColorStop(0,'rgba(255,255,255,.14)');
+    glassGrad.addColorStop(0.5,'rgba(255,255,255,.06)');
+    glassGrad.addColorStop(1,'rgba(0,0,0,.2)');
+    hg.fillStyle=glassGrad;
+    hg.fill(glassPath);
+
+    hg.save();
+    hg.clip(glassPath);
+
+    const sandGrad=hg.createLinearGradient(0, topY, 0, bottomY);
+    sandGrad.addColorStop(0,'#f8d06b');
+    sandGrad.addColorStop(.55,'#ebb24f');
+    sandGrad.addColorStop(1,'#d98d2f');
+    hg.fillStyle=sandGrad;
+
+    const topFill=Math.max(0, Math.min(1, 1-ratio));
+    if(topFill>0){
+      const topFillY=topY + (bowlH*(1-topFill));
+      hg.beginPath();
+      hg.moveTo(cx-bowlW*0.9, topFillY);
+      hg.quadraticCurveTo(cx, topFillY - bowlH*0.12*topFill, cx+bowlW*0.9, topFillY);
+      hg.bezierCurveTo(cx+bowlW*0.65, topFillY+bowlH*0.22, cx+neckW*1.45, neckY-4, cx+neckW, neckY-1);
+      hg.lineTo(cx-neckW, neckY-1);
+      hg.bezierCurveTo(cx-neckW*1.45, neckY-4, cx-bowlW*0.65, topFillY+bowlH*0.22, cx-bowlW*0.9, topFillY);
+      hg.closePath();
+      hg.fill();
+    }
+
+    const bottomFill=Math.max(0, Math.min(1, ratio));
+    if(bottomFill>0){
+      const bottomFillY=bottomY - (bowlH*bottomFill);
+      hg.beginPath();
+      hg.moveTo(cx-bowlW*0.9, bottomY-1);
+      hg.bezierCurveTo(cx-bowlW*0.7, bottomFillY+bowlH*0.22, cx-neckW*1.45, bottomFillY+4, cx-neckW, bottomFillY+1);
+      hg.lineTo(cx+neckW, bottomFillY+1);
+      hg.bezierCurveTo(cx+neckW*1.45, bottomFillY+4, cx+bowlW*0.7, bottomFillY+bowlH*0.22, cx+bowlW*0.9, bottomY-1);
+      hg.quadraticCurveTo(cx, bottomY - bowlH*0.11*bottomFill, cx-bowlW*0.9, bottomY-1);
+      hg.closePath();
+      hg.fill();
+    }
+
+    if(flowEnabled && ratio>0 && ratio<1){
+      hg.fillStyle='rgba(248,208,107,.95)';
+      hg.fillRect(cx-1.25, neckY-1, 2.5, bowlH*0.32);
+      hg.beginPath();
+      hg.ellipse(cx, neckY+bowlH*0.34, 5, 3.4, 0, 0, Math.PI*2);
+      hg.fill();
+    }
+    hg.restore();
+
+    hg.lineWidth=Math.max(3, w*0.02);
+    hg.strokeStyle='rgba(224,235,247,.82)';
+    hg.stroke(glassPath);
+
+    hg.beginPath();
+    hg.moveTo(cx-neckW*1.35, neckY);
+    hg.lineTo(cx+neckW*1.35, neckY);
+    hg.strokeStyle='rgba(224,235,247,.52)';
+    hg.stroke();
+
+    hg.beginPath();
+    hg.moveTo(cx-bowlW*0.52, topY+lipR*0.6);
+    hg.bezierCurveTo(cx-bowlW*0.74, topY+bowlH*0.22, cx-bowlW*0.66, neckY-bowlH*0.08, cx-neckW*1.6, neckY-2);
+    hg.strokeStyle='rgba(255,255,255,.18)';
+    hg.lineWidth=Math.max(1.2, w*0.008);
+    hg.stroke();
+  }
+
+
   function updateHourglass(elapsedSec=0){
-    if(!hourglassWidget || !hourglassTopSand || !hourglassBottomSand || !hourglassStream || !hourglassSel) return;
+    if(!hourglassWidget || !hourglassSel) return;
     const opacityRatio=Math.max(0.05, Math.min(0.6, (parseInt(hourglassOpacityEl?.value||'20',10)||20)/100));
     const limitSec=Math.max(0, parseInt(hourglassSel.value,10) || 0);
     hourglassWidget.style.opacity=String(opacityRatio);
     if(limitSec<=0){
-      hourglassTopSand.style.height='0%';
-      hourglassBottomSand.style.height='40%';
-      hourglassStream.style.opacity='0';
+      drawHourglass(1, false);
       return;
     }
     const ratio=Math.max(0, Math.min(1, elapsedSec/limitSec));
-    const topHeight=(40*(1-ratio)).toFixed(2)+'%';
-    const bottomHeight=(40*ratio).toFixed(2)+'%';
-    hourglassTopSand.style.height=topHeight;
-    hourglassBottomSand.style.height=bottomHeight;
-    hourglassStream.style.opacity=(ratio>0 && ratio<1)?'1':'0';
+    drawHourglass(ratio, true);
   }
 
   function restoreSettings(){
@@ -394,6 +494,7 @@ window.makeFilename = makeFilename; // 念のため外にも公開
   }
   updateStats();
   updateHourglass(getEffectiveElapsedSec());
+  addEventListener('resize', ()=>updateHourglass(getEffectiveElapsedSec()));
 
   // Crack effect
   const cracks=[], flashes=[], holes=[];
