@@ -356,25 +356,22 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     }
 
     if(flowEnabled && ratio>0 && ratio<1){
-      const streamW=Math.max(0.6, w*0.0022);
+      const streamW=Math.max(1.8, w*0.0048);
       const streamH=bowlH*0.7;
       const streamTop=neckY-1;
       const impactY=neckY+bowlH*0.66;
       const streamTime=animTimeSec;
       const seed=ratio*173.0 + streamTime*6.0;
 
-      hg.fillStyle='rgba(248,208,107,.28)';
-      hg.fillRect(cx-streamW*0.35, streamTop, streamW*0.7, streamH);
-
-      const grains=28;
+      const grains=24;
       for(let i=0;i<grains;i++){
         const t=((streamTime*1.6)+(i/grains))%1;
         const y=streamTop+streamH*t;
         const phase=seed+i*2.37;
         const sway=Math.sin(phase)*streamW*2.6 + Math.sin(phase*0.43+streamTime*3.2)*streamW*1.4;
-        const r=Math.max(0.38, streamW*(0.34+0.26*Math.sin(seed+i*2.1)));
+        const r=Math.max(0.9, streamW*(0.62+0.34*Math.sin(seed+i*2.1)));
         hg.beginPath();
-        hg.fillStyle=`rgba(248,208,107,${0.26+0.42*(1-t)})`;
+        hg.fillStyle=`rgba(248,208,107,${0.34+0.5*(1-t)})`;
         hg.arc(cx+sway, y, r, 0, Math.PI*2);
         hg.fill();
       }
