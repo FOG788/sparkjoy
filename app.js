@@ -152,9 +152,9 @@ window.makeFilename = makeFilename; // 念のため外にも公開
   const saveHigh=(s)=>Persistence.saveNum(LS.high,Math.max(0,Math.floor(s)));
   const loadAuto=()=>Persistence.loadNumWithCookie(LS.auto,CK.auto,180);
   const saveAuto=(s)=>Persistence.saveNumWithCookie(LS.auto,CK.auto,s);
-  const loadWarn=()=>Persistence.loadNumWithCookie(LS.warn,CK.warn,75);
+  const loadWarn=()=>Persistence.loadNumWithCookie(LS.warn,CK.warn,80);
   const saveWarn=(v)=>Persistence.saveNumWithCookie(LS.warn,CK.warn,v);
-  const loadBad =()=>Persistence.loadNumWithCookie(LS.bad,CK.bad,110);
+  const loadBad =()=>Persistence.loadNumWithCookie(LS.bad,CK.bad,100);
   const saveBad =(v)=>Persistence.saveNumWithCookie(LS.bad,CK.bad,v);
   const loadWarm=()=>Persistence.loadNumWithCookie(LS.warm,CK.warm,10);
   const saveWarm=(v)=>Persistence.saveNumWithCookie(LS.warm,CK.warm,v);
@@ -499,7 +499,8 @@ window.makeFilename = makeFilename; // 念のため外にも公開
   let highSec=loadHigh(); const showHigh=()=>{if(bestTimeEl) bestTimeEl.textContent=formatTime(highSec)}; showHigh();
   function updateHigh(elapsedSec, opts={}){
     const announce=opts.announce!==false;
-    if(elapsedSec>highSec){ highSec=elapsedSec|0; saveHigh(highSec); showHigh(); if(announce) toast('ハイスコア更新: '+formatTime(highSec)); }
+    const elapsedWholeSec=Math.max(0, elapsedSec|0);
+    if(elapsedWholeSec>highSec){ highSec=elapsedWholeSec; saveHigh(highSec); showHigh(); if(announce) toast('ハイスコア更新: '+formatTime(highSec)); }
   }
   function reduceHigh(sec){
     const next=Math.max(0, (highSec|0)-Math.max(0,sec|0));
