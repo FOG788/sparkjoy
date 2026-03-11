@@ -25,6 +25,20 @@ test('しきい値の既定値が UI と復元ロジックで一致する', () =
   assert.equal(warmLogic, warmUi);
 });
 
+test('永続化設定の既定値が UI と復元ロジックで一致する', () => {
+  const autoResetUi = capture(/id="autoReset"[\s\S]*?<option value="(\d+)" selected>/, indexHtml, 'autoReset selected value');
+  const hourglassUi = capture(/id="hourglassDuration"[\s\S]*?<option value="(\d+)" selected>/, indexHtml, 'hourglassDuration selected value');
+  const hourglassOpacityUi = capture(/id="hourglassOpacity"[^>]*value="(\d+)"/, indexHtml, 'hourglassOpacity value');
+
+  const autoResetLogic = capture(/const loadAuto=\(\)=>Persistence\.loadNumWithCookie\(LS\.auto,CK\.auto,(\d+)\);/, appJs, 'loadAuto default');
+  const hourglassLogic = capture(/const loadHourglassSec=\(\)=>Persistence\.loadNumWithCookie\(LS\.hourglass,CK\.hourglass,(\d+)\);/, appJs, 'loadHourglassSec default');
+  const hourglassOpacityLogic = capture(/const loadHourglassOpacity=\(\)=>Persistence\.loadNumWithCookie\(LS\.hourglassOpacity,CK\.hourglassOpacity,(\d+)\);/, appJs, 'loadHourglassOpacity default');
+
+  assert.equal(autoResetLogic, autoResetUi);
+  assert.equal(hourglassLogic, hourglassUi);
+  assert.equal(hourglassOpacityLogic, hourglassOpacityUi);
+});
+
 test('ハイスコア更新が秒単位の比較を使う', () => {
   assert.match(appJs, /const elapsedWholeSec=Math\.max\(0, elapsedSec\|0\);/);
   assert.match(appJs, /if\(elapsedWholeSec>highSec\)/);
