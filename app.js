@@ -122,7 +122,7 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     getCookie(name){
       try{
         const target=`${encodeURIComponent(name)}=`;
-        const hit=String(document.cookie||'').split('; ').find(c=>c.startsWith(target));
+        const hit=String(document.cookie||'').split(';').map(c=>c.trim()).find(c=>c.startsWith(target));
         return hit ? decodeURIComponent(hit.slice(target.length)) : null;
       }catch(_){ return null; }
     },

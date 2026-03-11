@@ -1,6 +1,6 @@
 # SparkJoy
 
-静的サイトとして動作するエディタです（`index.html` + `app.js` + `styles.css`）。
+静的サイトとして動作するエディターです（`index.html` + `app.js` + `styles.css`）。
 
 ## ローカルで試す
 
