@@ -64,7 +64,7 @@ window.makeFilename = makeFilename; // 念のため外にも公開
   const intensityEl=$('intensity'), ival=$('ival'), toggleFx=$('toggleFx'), toggleSound=$('toggleSound');
   const soundVolEl=$('soundVol'), sval=$('sval'), realismEl=$('realism'), rval=$('rval'), reverbEl=$('reverb'), revval=$('revval');
   const jamEl=$('jam'), jamval=$('jamval');
-  const charCountEl=$('charCount'), wordCountEl=$('wordCount'), elapsedEl=$('elapsed'), cpmEl=$('cpm'), cpmAvgEl=$('cpmAvg'), wpmAvgEl=$('wpmAvg'), modeSel=$('mode');
+  const charCountEl=$('charCount'), wordCountEl=$('wordCount'), elapsedEl=$('elapsed'), cpmEl=$('cpm'), cpmAvgEl=$('cpmAvg'), modeSel=$('mode');
   const idlePctEl=$('idlePct'), idleChip=$('idleChip'), bestTimeEl=$('bestTime'), resetSessionBtn=$('resetSessionBtn'), resetHighscoreBtn=$('resetHighscoreBtn');
   const editorVersionEl=$('editorVersion');
   const aura=$('aura'), canvas=$('fx'), ctx=canvas.getContext('2d');
@@ -566,11 +566,9 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     const now=performance.now(); if(typingStart && autoResetSec>0 && (now-lastInputAt)>autoResetSec*1000){ endSession('idle'); }
     if(!typingStart){
       const avgCpm=Math.round(sessionLen*60/Math.max(1, elapsedCarrySec));
-      const avgWpm=Math.round((sessionLen/5)*60/Math.max(1, elapsedCarrySec));
       elapsedEl&&(elapsedEl.textContent=formatTime(elapsedCarrySec));
       cpmEl&&(cpmEl.textContent='0');
       cpmAvgEl&&(cpmAvgEl.textContent=String(avgCpm));
-      wpmAvgEl&&(wpmAvgEl.textContent=String(avgWpm));
       idlePctEl&&(idlePctEl.textContent='0%');
       setChipClass(idleChip,null); setChipClass(cpmEl&&cpmEl.parentElement,null);
       updateHourglass(elapsedCarrySec);
@@ -583,10 +581,8 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     let sum=0; for(const s of cDeltaBuf){ sum+=s.c; }
     const spanSec=Math.max(1, Math.min(ROLL_MS/1000, elapsed)); const cpm=Math.round(sum*60/spanSec);
     const avgCpm=Math.round(sessionLen*60/Math.max(1, elapsed));
-    const avgWpm=Math.round((sessionLen/5)*60/Math.max(1, elapsed));
     cpmEl&&(cpmEl.textContent=String(cpm));
     cpmAvgEl&&(cpmAvgEl.textContent=String(avgCpm));
-    wpmAvgEl&&(wpmAvgEl.textContent=String(avgWpm));
     const activeNow=(now-lastInputAt)<ACTIVE_MS; activityBuf[activityIdx]=activeNow; activityIdx=(activityIdx+1)%IDLE_WINDOW;
     let act=0; for(const b of activityBuf){ if(b) act++; } const idlePct=Math.round((1-act/activityBuf.length)*100);
     idlePctEl&&(idlePctEl.textContent=idlePct+'%');
