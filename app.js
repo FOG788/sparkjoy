@@ -64,7 +64,7 @@ window.makeFilename = makeFilename; // 念のため外にも公開
   const intensityEl=$('intensity'), ival=$('ival'), toggleFx=$('toggleFx'), toggleSound=$('toggleSound');
   const soundVolEl=$('soundVol'), sval=$('sval'), realismEl=$('realism'), rval=$('rval'), reverbEl=$('reverb'), revval=$('revval');
   const jamEl=$('jam'), jamval=$('jamval');
-  const charCountEl=$('charCount'), wordCountEl=$('wordCount'), elapsedEl=$('elapsed'), cpmEl=$('cpm'), cpmAvgEl=$('cpmAvg'), modeSel=$('mode');
+  const charCountEl=$('charCount'), elapsedEl=$('elapsed'), cpmEl=$('cpm'), cpmAvgEl=$('cpmAvg'), modeSel=$('mode');
   const idlePctEl=$('idlePct'), idleChip=$('idleChip'), bestTimeEl=$('bestTime'), resetSessionBtn=$('resetSessionBtn'), resetHighscoreBtn=$('resetHighscoreBtn');
   const editorVersionEl=$('editorVersion');
   const aura=$('aura'), canvas=$('fx'), ctx=canvas.getContext('2d');
@@ -562,7 +562,6 @@ window.makeFilename = makeFilename; // 念のため外にも公開
   function updateStats(){
     const text=sanitizeText(editor.innerText||''); const totalLen=text.length; if(charCountEl) charCountEl.textContent=String(totalLen);
     const sessionLen=Math.max(0,totalLen-baseChars);
-    const totalWords=text.trim()?text.trim().split(/\s+/).length:0; if(wordCountEl) wordCountEl.textContent=String(totalWords);
     const now=performance.now(); if(typingStart && autoResetSec>0 && (now-lastInputAt)>autoResetSec*1000){ endSession('idle'); }
     if(!typingStart){
       const avgCpm=Math.round(sessionLen*60/Math.max(1, elapsedCarrySec));
