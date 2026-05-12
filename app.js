@@ -148,24 +148,37 @@ window.makeFilename = makeFilename; // 念のため外にも公開
       return Persistence.getCookie(cookieKey) ?? def;
     }
   };
+  const SETTINGS_DEFAULTS={
+    auto:180,
+    warn:80,
+    bad:100,
+    warm:10,
+    fs:16,
+    measure:120,
+    hourglass:600,
+    hourglassOpacity:20
+  };
+  function makeCookieBackedNumberSetting(name){
+    const storageKey=LS[name];
+    const cookieKey=CK[name];
+    const defaultValue=SETTINGS_DEFAULTS[name];
+    return {
+      load:()=>Persistence.loadNumWithCookie(storageKey,cookieKey,defaultValue),
+      save:(value)=>Persistence.saveNumWithCookie(storageKey,cookieKey,value)
+    };
+  }
+
   const loadHigh=()=>Persistence.loadNum(LS.high,0);
   const saveHigh=(s)=>Persistence.saveNum(LS.high,Math.max(0,Math.floor(s)));
-  const loadAuto=()=>Persistence.loadNumWithCookie(LS.auto,CK.auto,180);
-  const saveAuto=(s)=>Persistence.saveNumWithCookie(LS.auto,CK.auto,s);
-  const loadWarn=()=>Persistence.loadNumWithCookie(LS.warn,CK.warn,80);
-  const saveWarn=(v)=>Persistence.saveNumWithCookie(LS.warn,CK.warn,v);
-  const loadBad =()=>Persistence.loadNumWithCookie(LS.bad,CK.bad,100);
-  const saveBad =(v)=>Persistence.saveNumWithCookie(LS.bad,CK.bad,v);
-  const loadWarm=()=>Persistence.loadNumWithCookie(LS.warm,CK.warm,10);
-  const saveWarm=(v)=>Persistence.saveNumWithCookie(LS.warm,CK.warm,v);
-  const loadFs  =()=>Persistence.loadNumWithCookie(LS.fs,CK.fs,16);
-  const saveFs  =(v)=>Persistence.saveNumWithCookie(LS.fs,CK.fs,v);
-  const loadMeasure=()=>Persistence.loadNumWithCookie(LS.measure,CK.measure,120);
-  const saveMeasure=(v)=>Persistence.saveNumWithCookie(LS.measure,CK.measure,v);
-  const loadHourglassSec=()=>Persistence.loadNumWithCookie(LS.hourglass,CK.hourglass,600);
-  const saveHourglassSec=(v)=>Persistence.saveNumWithCookie(LS.hourglass,CK.hourglass,v);
-  const loadHourglassOpacity=()=>Persistence.loadNumWithCookie(LS.hourglassOpacity,CK.hourglassOpacity,20);
-  const saveHourglassOpacity=(v)=>Persistence.saveNumWithCookie(LS.hourglassOpacity,CK.hourglassOpacity,v);
+
+  const { load:loadAuto, save:saveAuto }=makeCookieBackedNumberSetting('auto');
+  const { load:loadWarn, save:saveWarn }=makeCookieBackedNumberSetting('warn');
+  const { load:loadBad, save:saveBad }=makeCookieBackedNumberSetting('bad');
+  const { load:loadWarm, save:saveWarm }=makeCookieBackedNumberSetting('warm');
+  const { load:loadFs, save:saveFs }=makeCookieBackedNumberSetting('fs');
+  const { load:loadMeasure, save:saveMeasure }=makeCookieBackedNumberSetting('measure');
+  const { load:loadHourglassSec, save:saveHourglassSec }=makeCookieBackedNumberSetting('hourglass');
+  const { load:loadHourglassOpacity, save:saveHourglassOpacity }=makeCookieBackedNumberSetting('hourglassOpacity');
 
   const sliderSettings=[
     {el:intensityEl,key:CK.intensity,out:ival,format:(v)=>v},
