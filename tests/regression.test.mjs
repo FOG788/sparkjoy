@@ -16,9 +16,9 @@ test('しきい値の既定値が UI と復元ロジックで一致する', () =
   const badUi = capture(/id="badTh"[^>]*value="(\d+)"/, indexHtml, 'badTh value');
   const warmUi = capture(/id="warmupSec"[^>]*value="(\d+)"/, indexHtml, 'warmupSec value');
 
-  const warnLogic = capture(/const loadWarn=\(\)=>Persistence\.loadNumWithCookie\(LS\.warn,CK\.warn,(\d+)\);/, appJs, 'loadWarn default');
-  const badLogic = capture(/const loadBad\s*=\(\)=>Persistence\.loadNumWithCookie\(LS\.bad,CK\.bad,(\d+)\);/, appJs, 'loadBad default');
-  const warmLogic = capture(/const loadWarm=\(\)=>Persistence\.loadNumWithCookie\(LS\.warm,CK\.warm,(\d+)\);/, appJs, 'loadWarm default');
+  const warnLogic = capture(/warn:(\d+)/, appJs, 'warn default');
+  const badLogic = capture(/bad:(\d+)/, appJs, 'bad default');
+  const warmLogic = capture(/warm:(\d+)/, appJs, 'warm default');
 
   assert.equal(warnLogic, warnUi);
   assert.equal(badLogic, badUi);
@@ -30,9 +30,9 @@ test('永続化設定の既定値が UI と復元ロジックで一致する', (
   const hourglassUi = capture(/id="hourglassDuration"[\s\S]*?<option value="(\d+)" selected>/, indexHtml, 'hourglassDuration selected value');
   const hourglassOpacityUi = capture(/id="hourglassOpacity"[^>]*value="(\d+)"/, indexHtml, 'hourglassOpacity value');
 
-  const autoResetLogic = capture(/const loadAuto=\(\)=>Persistence\.loadNumWithCookie\(LS\.auto,CK\.auto,(\d+)\);/, appJs, 'loadAuto default');
-  const hourglassLogic = capture(/const loadHourglassSec=\(\)=>Persistence\.loadNumWithCookie\(LS\.hourglass,CK\.hourglass,(\d+)\);/, appJs, 'loadHourglassSec default');
-  const hourglassOpacityLogic = capture(/const loadHourglassOpacity=\(\)=>Persistence\.loadNumWithCookie\(LS\.hourglassOpacity,CK\.hourglassOpacity,(\d+)\);/, appJs, 'loadHourglassOpacity default');
+  const autoResetLogic = capture(/auto:(\d+)/, appJs, 'auto default');
+  const hourglassLogic = capture(/hourglass:(\d+)/, appJs, 'hourglass default');
+  const hourglassOpacityLogic = capture(/hourglassOpacity:(\d+)/, appJs, 'hourglassOpacity default');
 
   assert.equal(autoResetLogic, autoResetUi);
   assert.equal(hourglassLogic, hourglassUi);
