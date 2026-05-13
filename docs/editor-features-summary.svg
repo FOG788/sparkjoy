@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#171b2a"/>
+      <stop offset="100%" stop-color="#27304a"/>
+    </linearGradient>
+    <style>
+      .title { font: 700 64px 'Segoe UI', 'Noto Sans JP', sans-serif; fill: #f3f6ff; }
+      .sub { font: 400 34px 'Segoe UI', 'Noto Sans JP', sans-serif; fill: #b6c3e8; }
+      .h { font: 700 34px 'Segoe UI', 'Noto Sans JP', sans-serif; fill: #ffe8ad; }
+      .t { font: 400 27px 'Segoe UI', 'Noto Sans JP', sans-serif; fill: #e7edff; }
+      .foot { font: 400 28px 'Segoe UI', 'Noto Sans JP', sans-serif; fill: #d9f3d9; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <rect x="38" y="28" width="1524" height="844" rx="24" fill="#1f2539" stroke="#6173a3" stroke-width="3"/>
+
+  <text x="80" y="120" class="title">SparkJoy Editor 機能まとめ</text>
+  <text x="80" y="175" class="sub">タイピングに反応する、遊び心つき集中エディター</text>
+
+  <g transform="translate(80,220)">
+    <rect width="470" height="180" rx="20" fill="#303b5b" stroke="#7c90c9"/>
+    <text x="22" y="48" class="h">基本操作</text>
+    <text x="24" y="88" class="t">• 保存 / コピー / 全消去</text>
+    <text x="24" y="122" class="t">• タブ: エディター・設定・説明書</text>
+    <text x="24" y="156" class="t">• contenteditable編集エリア</text>
+  </g>
+
+  <g transform="translate(585,220)">
+    <rect width="470" height="180" rx="20" fill="#303b5b" stroke="#7c90c9"/>
+    <text x="22" y="48" class="h">可視化メトリクス</text>
+    <text x="24" y="88" class="t">• Characters・経過時間</text>
+    <text x="24" y="122" class="t">• CPM / 平均CPM / 停止比</text>
+    <text x="24" y="156" class="t">• ハイスコアとリセット</text>
+  </g>
+
+  <g transform="translate(1090,220)">
+    <rect width="470" height="180" rx="20" fill="#303b5b" stroke="#7c90c9"/>
+    <text x="22" y="48" class="h">演出とサウンド</text>
+    <text x="24" y="88" class="t">• エフェクトON/OFF・強度</text>
+    <text x="24" y="122" class="t">• 音量 / リアル度 / リバーブ</text>
+    <text x="24" y="156" class="t">• ジャム確率で刺激を調整</text>
+  </g>
+
+  <g transform="translate(80,430)">
+    <rect width="470" height="180" rx="20" fill="#303b5b" stroke="#7c90c9"/>
+    <text x="22" y="48" class="h">集中サポート</text>
+    <text x="24" y="88" class="t">• ウォームアップ秒数</text>
+    <text x="24" y="122" class="t">• 黄/赤しきい値(CPM)</text>
+    <text x="24" y="156" class="t">• 無操作リセット</text>
+  </g>
+
+  <g transform="translate(585,430)">
+    <rect width="470" height="180" rx="20" fill="#303b5b" stroke="#7c90c9"/>
+    <text x="22" y="48" class="h">表示カスタム</text>
+    <text x="24" y="88" class="t">• 文字サイズ</text>
+    <text x="24" y="122" class="t">• 本文横幅（Measure）</text>
+    <text x="24" y="156" class="t">• 砂時計タイマー・透明度</text>
+  </g>
+
+  <g transform="translate(1090,430)">
+    <rect width="470" height="180" rx="20" fill="#303b5b" stroke="#7c90c9"/>
+    <text x="22" y="48" class="h">モード</text>
+    <text x="24" y="88" class="t">• 執筆モード: 入力重視</text>
+    <text x="24" y="122" class="t">• 推敲モード: 見直し向け</text>
+    <text x="24" y="156" class="t">• 状況に応じて切替</text>
+  </g>
+
+  <rect x="80" y="760" width="1440" height="82" rx="16" fill="#455273" stroke="#8ea4db"/>
+  <text x="105" y="812" class="foot">Tip: まずは「ウォームアップ 8〜15秒 + 黄70〜100 + 赤90〜130」から調整すると安定。</text>
+</svg>
