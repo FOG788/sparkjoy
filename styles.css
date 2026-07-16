@@ -1,4 +1,4 @@
-    :root{ --bg:#0b0f14; --ink:#e6ecf3; --muted:#9fb3c7; --panel:rgba(255,255,255,0.05); --border:rgba(255,255,255,0.12); }
+    :root{ --bg:#0b0f14; --ink:#e6ecf3; --muted:#9fb3c7; --panel:rgba(255,255,255,0.05); --border:rgba(255,255,255,0.12); --hourglass-width:clamp(240px,34vw,620px); --editor-left-padding:clamp(24px,6vw,72px); --editor-right-padding:calc(var(--hourglass-width) + 24px); }
     *{box-sizing:border-box}
     html,body{height:100%}
     body{margin:0; min-height:100dvh; display:flex; flex-direction:column; overflow:hidden; background:var(--bg); color:var(--ink); font:16px/1.6 system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans JP", sans-serif;}
@@ -10,6 +10,7 @@
     .tab{padding:8px 12px; border-radius:999px; border:1px solid var(--border); background:#13202f; color:var(--ink); cursor:pointer}
     .tab.active{background:#1c2a3c}
     #toolbar{margin:0 12px 12px; padding:8px; display:flex; flex-direction:column; gap:10px; position:sticky; top:102px; z-index:18; backdrop-filter:blur(8px); background:rgba(18,24,34,.9)}
+    body.tab-settings #toolbar{max-height:calc(100dvh - 116px);overflow:auto;overscroll-behavior:contain}
     .bar{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
     .chip{display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:999px; background:rgba(0,0,0,.25); border:1px solid var(--border)}
     .chip input[type="range"], .chip select{width:140px}
@@ -17,9 +18,10 @@
     #editorWrap{margin:0 12px 12px; flex:1; min-height:0; overflow:auto; position:relative;}
     #editor{
       min-height:100%;
-      width:min(100%, var(--editor-measure));
+      width:100%;
+      max-width:calc(var(--editor-measure) + var(--editor-left-padding) + var(--editor-right-padding));
       margin:0 auto;
-      padding:14px max(28px, 27vw) 14px clamp(24px, 6vw, 72px);
+      padding:14px var(--editor-right-padding) 14px var(--editor-left-padding);
       outline:none;
       white-space:pre-wrap;
       word-break:break-word;
@@ -49,8 +51,8 @@
       right:12px;
       top:calc(env(safe-area-inset-top) + 136px);
       bottom:12px;
-      width:min(34vw, 620px);
-      min-width:240px;
+      width:var(--hourglass-width);
+      min-width:0;
       padding:14px 18px;
       border-left:1px solid rgba(255,255,255,.1);
       background:linear-gradient(270deg, rgba(18,26,38,.55), rgba(18,26,38,.2) 50%, rgba(18,26,38,0));
@@ -62,6 +64,7 @@
       contain:layout paint;
       transform:translateZ(0);
     }
+    #hourglassWidget[hidden]{display:none}
     .hourglass-canvas{
       width:min(98%, 400px);
       height:100%;
@@ -83,6 +86,13 @@
       header { padding-top: calc(env(safe-area-inset-top) + 6px); }
       .tabs{ top: calc(env(safe-area-inset-top) + 56px); }
       #toolbar{ top: calc(env(safe-area-inset-top) + 102px); }
+    }
+    @media (max-width:720px) {
+      :root{--hourglass-width:clamp(96px,30vw,180px);--editor-right-padding:calc(var(--hourglass-width) + 12px)}
+      #hourglassWidget{padding:8px;right:6px}
+    }
+    @media (prefers-reduced-motion:reduce) {
+      #aura,body.shake-warn,body.shake-bad{animation:none!important;transition:none!important}
     }
     /* ==== タイプライターモード用スペーサ ==== */
     :root{

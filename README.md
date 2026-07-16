@@ -1,6 +1,6 @@
 # SparkJoy
 
-静的サイトとして動作するエディターです（`index.html` + `app.js` + `styles.css`）。
+静的サイトとして動作するエディターです（`index.html` + `session-core.js` + `app.js` + `styles.css`）。
 
 ## ローカルで試す
 
@@ -13,6 +13,14 @@ python -m http.server 4173 --bind 0.0.0.0
 
 - これは静的配信なので、ビルド手順は不要です。
 - `sounds/` 配下もそのまま配信されます。
+
+## テスト
+
+```bash
+node --check session-core.js
+node --check app.js
+node --test
+```
 
 ## スクリーンショット取得メモ（開発向け）
 

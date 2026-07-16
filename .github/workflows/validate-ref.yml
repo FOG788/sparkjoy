@@ -1,0 +1,33 @@
+name: Validate static site ref
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Validation target ref (branch name, tag, or commit SHA)'
+        required: true
+        default: 'main'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preview-validation-${{ github.event.inputs.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate_ref:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref }}
+
+      - name: Validate JavaScript syntax
+        run: |
+          node --check session-core.js
+          node --check app.js
+
+      - name: Run regression tests
+        run: node --test

@@ -8,13 +8,14 @@ async function saveWithPicker(text, fname){
     await w.write(new Blob([text], { type: 'text/plain;charset=utf-8' }));
     await w.close();
     toast('保存しました（ダウンロードではなく指定場所に保存）');
-    return true;
+    return 'saved';
   } catch (e) {
     if (e && (e.name === 'AbortError' || e.code === 20)) {
       toast('保存をキャンセルしました');
-      return false;
+      return 'cancelled';
     }
-    return false;
+    toast('指定場所への保存に失敗しました');
+    return 'failed';
   }
 }
 
@@ -43,6 +44,8 @@ window.toast ||= function (msg) {
   try {
     const t = document.createElement('div');
     t.className = 'toast';
+    t.setAttribute('role','status');
+    t.setAttribute('aria-live','polite');
     t.textContent = String(msg);
     document.body.appendChild(t);
     setTimeout(() => t.remove(), 1400);
@@ -58,6 +61,13 @@ window.makeFilename = makeFilename; // 念のため外にも公開
 (()=>{'use strict';
 
   const $ = (id)=>document.getElementById(id);
+  const Core=window.SparkJoyCore;
+  if(!Core) throw new Error('SparkJoyCore is required');
+  const graphemeSegmenter=typeof Intl!=='undefined'&&typeof Intl.Segmenter==='function'?new Intl.Segmenter('ja',{granularity:'grapheme'}):null;
+  function countTextCharacters(value){
+    const text=sanitizeText(value);
+    return graphemeSegmenter?Array.from(graphemeSegmenter.segment(text)).length:Array.from(text).length;
+  }
   const editor=$('editor'), editorWrap=$('editorWrap'), saveBtn=$('saveBtn'), clearBtn=$('clearBtn'), copyBtn=$('copyBtn');
   const fontEl=$('fontSize'), fsVal=$('fsVal');
   const measureEl=$('editorMeasure'), measureVal=$('measureVal');
@@ -80,7 +90,19 @@ window.makeFilename = makeFilename; // 念のため外にも公開
   addEventListener('resize', resizeCanvas); resizeCanvas();
 
   // Tabs
-  tabs.forEach(btn=>btn.addEventListener('click',()=>{tabs.forEach(b=>b.classList.remove('active'));btn.classList.add('active');const tab=btn.dataset.tab;document.body.classList.toggle('tab-settings',tab==='settings');document.body.classList.toggle('tab-guide',tab==='guide');document.body.classList.toggle('tab-editor',tab==='editor');}));
+  function activateTab(btn){
+    tabs.forEach((tabButton)=>{
+      const selected=tabButton===btn;
+      tabButton.classList.toggle('active',selected);
+      tabButton.setAttribute('aria-selected',selected?'true':'false');
+    });
+    const tab=btn.dataset.tab;
+    document.body.classList.toggle('tab-settings',tab==='settings');
+    document.body.classList.toggle('tab-guide',tab==='guide');
+    document.body.classList.toggle('tab-editor',tab==='editor');
+    syncHourglassAnimation();
+  }
+  tabs.forEach((btn)=>btn.addEventListener('click',()=>activateTab(btn)));
 
 
   function detectEditorVersion(){
@@ -413,9 +435,10 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     const limitSec=Math.max(0, parseInt(hourglassSel.value,10) || 0);
     hourglassWidget.style.opacity=String(opacityRatio);
     if(limitSec<=0){
-      drawHourglass(1, false, nowMs/1000);
+      hourglassWidget.hidden=true;
       return;
     }
+    hourglassWidget.hidden=false;
     const ratio=Math.max(0, Math.min(1, elapsedSec/limitSec));
     drawHourglass(ratio, true, nowMs/1000);
   }
@@ -453,12 +476,15 @@ window.makeFilename = makeFilename; // 念のため外にも公開
       }
     });
     toggleSettings.forEach(({el,key})=>{
-      el.addEventListener('change',()=>Persistence.setCookie(key,el.checked?'1':'0'));
+      el.addEventListener('change',()=>{
+        Persistence.setCookie(key,el.checked?'1':'0');
+        if(el===toggleFx&&!el.checked) clearVisualEffects();
+      });
     });
     if(hourglassSel){
       hourglassSel.addEventListener('change', ()=>{
         saveHourglassSec(parseInt(hourglassSel.value,10)||0);
-        updateHourglass(getEffectiveElapsedSec());
+        syncHourglassAnimation();
       });
     }
     if(hourglassOpacityEl){
@@ -484,12 +510,12 @@ window.makeFilename = makeFilename; // 念のため外にも公開
   let typingStart=null, statsTimer=null, baseChars=0, lastCountLen=0, elapsedCarrySec=0;
   const ROLL_MS=60000; let cDeltaBuf=[];
   let lastInputAt=0; const ACTIVE_MS=2000, IDLE_WINDOW=60;
-  let activityBuf=new Array(IDLE_WINDOW).fill(false), activityIdx=0;
+  const activityTracker=Core.createActivityTracker({windowSeconds:IDLE_WINDOW,activeMs:ACTIVE_MS});
   const MODE={write:{warn:80,bad:100},revise:{min:30,max:70}};
   function setChipClass(el,cls){if(!el)return;el.classList.remove('good','warn','bad'); if(cls) el.classList.add(cls);}
   function setAura(level){ if(!aura) return; aura.classList.remove('warn','bad'); if(level==='warn') aura.classList.add('warn'); else if(level==='bad') aura.classList.add('bad'); }
   function bumpShake(level){ try{ document.body.classList.remove('shake-warn','shake-bad'); void document.body.offsetWidth; document.body.classList.add(level==='bad'?'shake-bad':'shake-warn'); }catch(_){} }
-  function getThresholds(){ let warn=parseInt(warnEl.value,10)||80, bad=parseInt(badEl.value,10)||100; if(warn>=bad){bad=warn+1; badEl.value=String(bad);} warnVal.textContent=warn; badVal.textContent=bad; return{warn,bad}; }
+  function getThresholds(){ let warn=parseInt(warnEl.value,10)||80, bad=parseInt(badEl.value,10)||100; if(warn>=bad){bad=warn+1; badEl.value=String(bad); saveBad(bad);} warnVal.textContent=warn; badVal.textContent=bad; return{warn,bad}; }
 
   function updateModeFeedback(cpm){
     const wrap=cpmEl&&cpmEl.parentElement; if(!wrap) return; setChipClass(wrap,null);
@@ -499,9 +525,10 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     if(mode==='revise'){ const th=MODE.revise; if(cpm>th.max) level='bad'; else if(cpm<th.min) level='warn'; else level='good'; }
     else { const th=getThresholds(); if(cpm>=th.bad) level='bad'; else if(cpm>=th.warn) level='warn'; }
     if(level==='good') setChipClass(wrap,'good'); else if(level==='warn') setChipClass(wrap,'warn'); else if(level==='bad') setChipClass(wrap,'bad');
-    setAura(level==='warn'?'warn':(level==='bad'?'bad':null));
+    if(toggleFx.checked) setAura(level==='warn'?'warn':(level==='bad'?'bad':null));
+    else setAura(null);
     const now=performance.now(), justTyped=(now-lastInputAt)<220;
-    if((level==='bad'||level==='warn') && justTyped){
+    if(toggleFx.checked&&(level==='bad'||level==='warn')&&justTyped){
       const cooldown=(level==='bad')?1500:2500;
       if(level!==window.__lastSpeedLevel || !window.__lastShakeAt || (now-window.__lastShakeAt)>cooldown){ bumpShake(level); window.__lastShakeAt=now; }
     }
@@ -509,28 +536,29 @@ window.makeFilename = makeFilename; // 念のため外にも公開
   }
   const formatTime=(sec)=>{const s=(sec%60|0).toString().padStart(2,'0'), m=((sec/60|0)%60).toString().padStart(2,'0'), h=(sec/3600|0); return (h>0?h+':':'')+m+':'+s; };
 
-  let highSec=loadHigh(); const showHigh=()=>{if(bestTimeEl) bestTimeEl.textContent=formatTime(highSec)}; showHigh();
+  let highSec=loadHigh(), highAtSessionStart=highSec; const showHigh=()=>{if(bestTimeEl) bestTimeEl.textContent=formatTime(highSec)}; showHigh();
   function updateHigh(elapsedSec, opts={}){
     const announce=opts.announce!==false;
     const elapsedWholeSec=Math.max(0, elapsedSec|0);
     if(elapsedWholeSec>highSec){ highSec=elapsedWholeSec; saveHigh(highSec); showHigh(); if(announce) toast('ハイスコア更新: '+formatTime(highSec)); }
   }
-  function reduceHigh(sec){
-    const next=Math.max(0, (highSec|0)-Math.max(0,sec|0));
-    if(next!==highSec){ highSec=next; saveHigh(highSec); showHigh(); }
-  }
-
   function getEffectiveElapsedSec(now=performance.now()){
     if(!typingStart) return elapsedCarrySec;
     return elapsedCarrySec + Math.max(0,(now-typingStart)/1000);
   }
 
   let hourglassAnimRaf=0;
+  function shouldAnimateHourglass(elapsedSec=getEffectiveElapsedSec()){
+    const limitSec=Math.max(0,parseInt(hourglassSel?.value||'0',10)||0);
+    return !document.hidden&&!document.body.classList.contains('tab-guide')&&!!typingStart&&limitSec>0&&elapsedSec<limitSec;
+  }
   function startHourglassAnimation(){
     if(hourglassAnimRaf) return;
     const tick=(now)=>{
-      updateHourglass(getEffectiveElapsedSec(now), now);
-      hourglassAnimRaf=requestAnimationFrame(tick);
+      const elapsed=getEffectiveElapsedSec(now);
+      updateHourglass(elapsed,now);
+      if(shouldAnimateHourglass(elapsed)) hourglassAnimRaf=requestAnimationFrame(tick);
+      else hourglassAnimRaf=0;
     };
     hourglassAnimRaf=requestAnimationFrame(tick);
   }
@@ -539,43 +567,46 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     cancelAnimationFrame(hourglassAnimRaf);
     hourglassAnimRaf=0;
   }
+  function syncHourglassAnimation(){
+    const elapsed=getEffectiveElapsedSec();
+    updateHourglass(elapsed);
+    if(shouldAnimateHourglass(elapsed)) startHourglassAnimation();
+    else stopHourglassAnimation();
+  }
 
   let autoResetSec=loadAuto(); autoResetSel.value=String(autoResetSec);
   autoResetSel.addEventListener('change',()=>{autoResetSec=parseInt(autoResetSel.value,10)||0; saveAuto(autoResetSec);});
 
   function endSession(reason){
     const now=performance.now();
-    let idlePenaltySec=0;
+    const textLength=countTextCharacters(editor.innerText||'');
+    const elapsed=getEffectiveElapsedSec(now);
     if(typingStart){
-      const elapsedNow=Math.max(0,(now-typingStart)/1000);
-      if(reason==='idle' && autoResetSec>0){
-        // 無操作猶予ぶんだけ差し引いた実質経過時間を保持する
-        elapsedCarrySec += Math.max(0, elapsedNow-autoResetSec);
-        idlePenaltySec=autoResetSec;
+      if(reason==='idle'){
+        highSec=Core.resolveIdleHighScore(highAtSessionStart,elapsed,autoResetSec);
+        saveHigh(highSec);
+        showHigh();
       } else {
-        elapsedCarrySec = 0;
+        updateHigh(elapsed);
       }
-      if(reason!=='idle'){
-        updateHigh(getEffectiveElapsedSec(now));
-      }
-    } else if(reason!=='idle'){
-      elapsedCarrySec = 0;
     }
-    if(reason==='idle' && idlePenaltySec>0){
-      reduceHigh(idlePenaltySec);
-    }
+    const resetState=Core.createSessionResetState(textLength);
+    elapsedCarrySec=resetState.elapsedCarrySec;
+    baseChars=resetState.baseChars;
     typingStart=null;
-    if(reason!=='idle') baseChars=0;
-    cDeltaBuf.length=0; activityBuf.fill(false);
-    lastCountLen=sanitizeText(editor.innerText||'').length; updateStats();
+    if(statsTimer){clearInterval(statsTimer);statsTimer=null;}
+    cDeltaBuf.length=0; activityTracker.reset();
+    lastCountLen=textLength; updateStats();
     window.__lastSpeedLevel='none'; window.__lastShakeAt=0; setAura(null);
+    syncHourglassAnimation();
     if(reason==='idle'&&autoResetSec>0) toast('無操作でセッションをリセット');
   }
 
   function updateStats(){
-    const text=sanitizeText(editor.innerText||''); const totalLen=text.length; if(charCountEl) charCountEl.textContent=String(totalLen);
+    const text=sanitizeText(editor.innerText||''); const totalLen=countTextCharacters(text); if(charCountEl) charCountEl.textContent=String(totalLen);
     const sessionLen=Math.max(0,totalLen-baseChars);
-    const now=performance.now(); if(typingStart && autoResetSec>0 && (now-lastInputAt)>autoResetSec*1000){ endSession('idle'); }
+    const now=performance.now();
+    if(typingStart&&autoResetSec>0&&(now-lastInputAt)>autoResetSec*1000){endSession('idle');return;}
     if(!typingStart){
       const avgCpm=Math.round(sessionLen*60/Math.max(1, elapsedCarrySec));
       elapsedEl&&(elapsedEl.textContent=formatTime(elapsedCarrySec));
@@ -595,30 +626,40 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     const avgCpm=Math.round(sessionLen*60/Math.max(1, elapsed));
     cpmEl&&(cpmEl.textContent=String(cpm));
     cpmAvgEl&&(cpmAvgEl.textContent=String(avgCpm));
-    const activeNow=(now-lastInputAt)<ACTIVE_MS; activityBuf[activityIdx]=activeNow; activityIdx=(activityIdx+1)%IDLE_WINDOW;
-    let act=0; for(const b of activityBuf){ if(b) act++; } const idlePct=Math.round((1-act/activityBuf.length)*100);
+    const idlePct=activityTracker.record(now,lastInputAt);
     idlePctEl&&(idlePctEl.textContent=idlePct+'%');
     if(modeSel&&modeSel.value==='revise'){ if(idlePct<20) setChipClass(idleChip,'bad'); else if(idlePct<40) setChipClass(idleChip,'warn'); else setChipClass(idleChip,'good'); } else setChipClass(idleChip,null);
     updateModeFeedback(cpm);
   }
-  function startStatsIfNeeded(){
-    if(!typingStart){ typingStart=performance.now(); try{ lastCountLen=baseChars=sanitizeText(editor.innerText||'').length; }catch(_){ lastCountLen=baseChars=0; }
+  function startStatsIfNeeded(initialBaseLength=lastCountLen){
+    if(!typingStart){ typingStart=performance.now(); highAtSessionStart=highSec; elapsedCarrySec=0; activityTracker.reset();
+      try{ lastCountLen=countTextCharacters(editor.innerText||''); baseChars=Math.max(0,Number(initialBaseLength)||0); }catch(_){ lastCountLen=baseChars=0; }
       if(statsTimer) clearInterval(statsTimer); statsTimer=setInterval(updateStats,1000);
+      syncHourglassAnimation();
     }
   }
   updateStats();
-  updateHourglass(getEffectiveElapsedSec());
-  addEventListener('resize', ()=>updateHourglass(getEffectiveElapsedSec()));
+  syncHourglassAnimation();
+  addEventListener('resize', syncHourglassAnimation);
   if(hourglassWidget){
-    startHourglassAnimation();
     document.addEventListener('visibilitychange', ()=>{
-      if(document.hidden) stopHourglassAnimation();
-      else startHourglassAnimation();
+      syncHourglassAnimation();
     });
   }
 
   // Crack effect
   const cracks=[], flashes=[], holes=[];
+  let fxRaf=0;
+  function ensureFxAnimation(){
+    if(!fxRaf) fxRaf=requestAnimationFrame(drawCracks);
+  }
+  function clearVisualEffects(){
+    cracks.length=0; flashes.length=0; holes.length=0;
+    if(fxRaf){cancelAnimationFrame(fxRaf);fxRaf=0;}
+    try{ctx.clearRect(0,0,innerWidth,innerHeight);}catch(_){}
+    setAura(null);
+    document.body.classList.remove('shake-warn','shake-bad');
+  }
   function spawnCrack(x,y){
     if(!toggleFx.checked) return;
     const I=Math.max(0,Math.min(100,+intensityEl.value||0));
@@ -641,6 +682,7 @@ window.makeFilename = makeFilename; // 念のため外にも公開
       }
     }
     cracks.push({segments:segs});
+    ensureFxAnimation();
   }
   function spawnSingleImpactAround(cx, cy, opts = {}) {
   if (!toggleFx.checked) return;
@@ -683,6 +725,7 @@ window.makeFilename = makeFilename; // 念のため外にも公開
   }
       
   function drawCracks(){
+    fxRaf=0;
     ctx.clearRect(0,0,innerWidth,innerHeight);
     for(let c=cracks.length-1;c>=0;c--){
       const crack=cracks[c]; let allDead=true;
@@ -721,9 +764,8 @@ window.makeFilename = makeFilename; // 念のため外にも公開
       ctx.fillStyle=grd; ctx.globalCompositeOperation='lighter'; ctx.beginPath(); ctx.arc(f.x,f.y,r,0,Math.PI*2); ctx.fill(); ctx.globalCompositeOperation='source-over';
       if(f.age>=f.life) flashes.splice(i,1);
     }
-    requestAnimationFrame(drawCracks);
+    if(cracks.length||flashes.length||holes.length) ensureFxAnimation();
   }
-  requestAnimationFrame(drawCracks);
 
   // Audio
   // ======== Audio Samples (MP3) =========
@@ -772,7 +814,7 @@ async function loadGunshotSamples() {
     // ★ 実サンプルをプリロード
     loadGunshotSamples();
   }
-  function ensureAudio(){ if(!audioCtx){ const AC=window.AudioContext||window.webkitAudioContext; audioCtx=new AC(); buildAudioAssets(); } }
+  function ensureAudio(){ if(!audioCtx){ const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return; audioCtx=new AC(); buildAudioAssets(); } }
   function resumeAudio(){ try{ if(audioCtx && audioCtx.state==='suspended') audioCtx.resume(); }catch(_){} }
   window.__gunVariants=[
     {name:'pistol_close', crackHz:2600, crackQ:0.9, crackDur:0.06, thumpHz:90, thumpDur:0.22, pingHz:0,    tail:'room',  tailMix:0.25},
@@ -859,7 +901,7 @@ async function loadGunshotSamples() {
     });
   }
   function playGunshot(){
-    if(!toggleSound.checked) return; ensureAudio(); resumeAudio();
+    if(!toggleSound.checked) return; ensureAudio(); if(!audioCtx) return; resumeAudio();
     const a=audioCtx, now=a.currentTime, UIvol=(+soundVolEl.value/100);
     const R=Math.max(0,Math.min(1,(+realismEl.value||0)/100)), RV=Math.max(0,Math.min(1,(+reverbEl.value||0)/100));
       // === ここから追加：実サンプルを優先再生 ===
@@ -934,33 +976,33 @@ async function loadGunshotSamples() {
     thOsc.start(now);   thOsc.stop(now+thDur+0.05);
     if(pingOsc){ pingOsc.start(now); pingOsc.stop(now+0.15); }
   }
-  ['pointerdown','keydown'].forEach(ev=>addEventListener(ev,()=>{ensureAudio();resumeAudio();},{once:true}));
+  ['pointerdown','keydown'].forEach(ev=>addEventListener(ev,()=>{if(toggleSound.checked){ensureAudio();resumeAudio();}},{once:true}));
 
   // IME（composition）: 変換中はカウントしないがFX/SFXは出す（60msスロットル）
   let isComposing=false, compBaseLen=0, lastCompFxAt=0;
-  editor.addEventListener('compositionstart',()=>{ isComposing=true; compBaseLen=sanitizeText(editor.innerText||'').length; });
+  editor.addEventListener('compositionstart',()=>{ isComposing=true; compBaseLen=countTextCharacters(editor.innerText||''); });
   editor.addEventListener('compositionend',()=>{
     const now=performance.now();
-    const lenNow=sanitizeText(editor.innerText||'').length;
+    const lenNow=countTextCharacters(editor.innerText||'');
     const delta=Math.max(0,lenNow-compBaseLen);
     lastCountLen=lenNow; 
     isComposing=false;
     
     if(delta>0){
+      startStatsIfNeeded(compBaseLen);
       cDeltaBuf.push({t:now,c:delta});
       const cutoff=now-ROLL_MS;
       while(cDeltaBuf.length&&cDeltaBuf[0].t<cutoff){cDeltaBuf.shift();}
       lastInputAt=now;
+      updateStats();
       const p = caretClientPoint();
       spawnSingleImpactAround(p.x, p.y);
-      if(window.__lastSpeedLevel==='bad'){
+      if(toggleFx.checked&&window.__lastSpeedLevel==='bad'){
         flashes.push({x:p.x,y:p.y,age:0,life:36,size:240*(Math.max(0.6,(+intensityEl.value)/100))});
-      } else if(window.__lastSpeedLevel==='warn'){
+      } else if(toggleFx.checked&&window.__lastSpeedLevel==='warn'){
         flashes.push({x:p.x,y:p.y,age:0,life:22,size:160*(Math.max(0.6,(+intensityEl.value)/100))});
-        } 
+      }
       playGunshot();
-      startStatsIfNeeded();
-      updateStats();
     } else { 
       updateStats();
     }
@@ -976,21 +1018,24 @@ async function loadGunshotSamples() {
 
   function onInput(ev){
     const type=ev&&ev.inputType||'', isPaste=type==='insertFromPaste'||type==='insertFromDrop', isCompType=/insertCompositionText|deleteCompositionText/.test(type)||(ev&&ev.isComposing);
-    const now=performance.now(); const lenNow=sanitizeText(editor.innerText||'').length;
+    const now=performance.now(); const lenNow=countTextCharacters(editor.innerText||'');
 
     if(isComposing||isCompType){
       const lenBefore=lastCountLen; lastCountLen=lenNow; lastInputAt=now;
       const isInsertish=type.startsWith('insert')||lenNow>lenBefore;
+      startStatsIfNeeded(compBaseLen);
+      updateStats();
       if(isInsertish && (now-lastCompFxAt)>60){ crackAtCaret(); lastCompFxAt=now; }
-      startStatsIfNeeded(); updateStats(); return;
+      return;
     }
 
-    const added=Math.max(0, lenNow-lastCountLen); lastCountLen=lenNow;
+    const lenBefore=lastCountLen;
+    const added=Math.max(0,lenNow-lenBefore); lastCountLen=lenNow;
     if(!isPaste && added>0){ cDeltaBuf.push({t:now,c:added}); const cutoff=now-ROLL_MS; while(cDeltaBuf.length&&cDeltaBuf[0].t<cutoff){ cDeltaBuf.shift(); } }
     lastInputAt=now;
-    if(!isPaste && added>0){ markKeystroke(); crackAtCaret(); }
-    startStatsIfNeeded(); 
+    startStatsIfNeeded(Core.getSessionBaseLength(lenBefore,lenNow,isPaste));
     updateStats();
+    if(!isPaste && added>0){ markKeystroke(); crackAtCaret(); }
     scheduleTW();
   }
   editor.addEventListener('input', onInput);
@@ -1061,20 +1106,53 @@ async function loadGunshotSamples() {
   
   // ---- Utils / Save / Clear ----
 
-  function sanitizeText(t){ return String(t||'').replace(/[​﻿]/g,''); }
+  function sanitizeText(t){ return String(t||''); }
+
+  function mountModal(overlay,box,initialFocus,onCleanup=()=>{}){
+    const previousFocus=document.activeElement;
+    box.setAttribute('role','dialog');
+    box.setAttribute('aria-modal','true');
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    let closed=false;
+    const cleanup=()=>{
+      if(closed) return;
+      closed=true;
+      document.removeEventListener('keydown',onKeydown);
+      onCleanup();
+      overlay.remove();
+      try{previousFocus?.focus();}catch(_){}
+    };
+    const onKeydown=(event)=>{
+      if(event.key==='Escape'){event.preventDefault();cleanup();return;}
+      if(event.key!=='Tab') return;
+      const focusable=Array.from(box.querySelectorAll('button,a[href]'));
+      if(!focusable.length) return;
+      const first=focusable[0],last=focusable[focusable.length-1];
+      if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
+      else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
+    };
+    document.addEventListener('keydown',onKeydown);
+    initialFocus.focus();
+    return cleanup;
+  }
 
   function showSaveFallback(text,filename){
     const overlay=document.createElement('div'); overlay.className='overlay';
     const box=document.createElement('div'); box.className='modal';
-    const msg=document.createElement('div'); msg.innerHTML='保存がブロックされました。下のリンクから保存してください。'; msg.style.marginBottom='12px';
+    const msg=document.createElement('div'); msg.textContent='保存がブロックされました。下のリンクから保存してください。'; msg.style.marginBottom='12px';
     const area=document.createElement('div'); area.className='row';
-    try{ const blob=new Blob([text],{type:'text/plain;charset=utf-8'}); const url=URL.createObjectURL(blob);
-      const a=document.createElement('a'); a.className='btn'; a.textContent='保存(.txt)'; a.href=url; a.download=filename; a.target='_blank'; a.rel='noopener'; area.appendChild(a);
-      overlay.addEventListener('click',(e)=>{ if(e.target===overlay){ try{URL.revokeObjectURL(url);}catch(_){ } document.body.removeChild(overlay);} });
+    let objectUrl=null;
+    try{ const blob=new Blob([text],{type:'text/plain;charset=utf-8'}); objectUrl=URL.createObjectURL(blob);
+      const a=document.createElement('a'); a.className='btn'; a.textContent='保存(.txt)'; a.href=objectUrl; a.download=filename; a.target='_blank'; a.rel='noopener'; area.appendChild(a);
     }catch(_){}
     const d=document.createElement('a'); d.className='btn'; d.textContent='新規タブ表示'; d.href='data:text/plain;charset=utf-8,'+encodeURIComponent(text); d.target='_blank'; d.rel='noopener'; area.appendChild(d);
-    const close=document.createElement('button'); close.className='btn'; close.textContent='閉じる'; close.addEventListener('click',()=>{ document.body.removeChild(overlay); });
-    box.appendChild(msg); box.appendChild(area); overlay.appendChild(box); document.body.appendChild(overlay); toast('保存リンクを表示しました');
+    const close=document.createElement('button'); close.className='btn'; close.type='button'; close.textContent='閉じる'; area.appendChild(close);
+    box.appendChild(msg); box.appendChild(area);
+    const cleanup=mountModal(overlay,box,close,()=>{if(objectUrl)try{URL.revokeObjectURL(objectUrl);}catch(_){}});
+    close.addEventListener('click',cleanup);
+    overlay.addEventListener('click',(event)=>{if(event.target===overlay)cleanup();});
+    toast('保存リンクを表示しました');
   }
 // === 全消去ダイアログ ===
 function askClear(){
@@ -1085,8 +1163,7 @@ function askClear(){
   const ok=document.createElement('button'); ok.className='btn'; ok.textContent='OK';
   const cancel=document.createElement('button'); cancel.className='btn'; cancel.textContent='キャンセル';
   row.appendChild(cancel); row.appendChild(ok); box.appendChild(msg); box.appendChild(row);
-  overlay.appendChild(box); document.body.appendChild(overlay);
-  const cleanup=()=>{ try{document.body.removeChild(overlay);}catch(_){ } };
+  const cleanup=mountModal(overlay,box,cancel);
   ok.addEventListener('click', ()=>{ cleanup(); doClear(); });
   cancel.addEventListener('click', cleanup);
   overlay.addEventListener('click', (e)=>{ if(e.target===overlay) cleanup(); });
@@ -1094,9 +1171,7 @@ function askClear(){
 
 function doClear(){
   editor.innerHTML='';
-  // 画面エフェクトも消去
-  if (typeof cracks!=='undefined'){ cracks.length=0; }
-  try { ctx.clearRect(0,0,window.innerWidth, window.innerHeight); } catch(_){}
+  clearVisualEffects();
   // キャレットを先頭に戻す
   const sel = window.getSelection();
   if(sel){ try{ sel.removeAllRanges(); const r=document.createRange(); r.setStart(editor,0); r.collapse(true); sel.addRange(r);}catch(_){ } }
@@ -1115,7 +1190,8 @@ if (saveBtn && !saveBtn.dataset.bound) {
 
     // Shift+クリックなら「名前を付けて保存…」
     if (ev.shiftKey && window.showSaveFilePicker) {
-      await saveWithPicker(text, fname);
+      const result=await saveWithPicker(text,fname);
+      if(result==='failed') showSaveFallback(text,fname);
       return;
     }
 
@@ -1128,7 +1204,8 @@ if (saveBtn && !saveBtn.dataset.bound) {
 
     // ブロック/失敗時のフォールバック
     if (window.showSaveFilePicker) {
-      await saveWithPicker(text, fname);
+      const result=await saveWithPicker(text,fname);
+      if(result==='failed') showSaveFallback(text,fname);
     } else {
       showSaveFallback(text, fname);
     }
@@ -1156,6 +1233,7 @@ if (saveBtn && !saveBtn.dataset.bound) {
     resetHighscoreBtn.dataset.bound = '1';
     resetHighscoreBtn.addEventListener('click', ()=> {
       highSec = 0;
+      highAtSessionStart = 0;
       try { localStorage.removeItem(LS.high); } catch(_) { }
       showHigh();
       toast('ハイスコアをリセットしました');
