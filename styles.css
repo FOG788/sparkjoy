@@ -63,14 +63,23 @@
       z-index:12;
       contain:layout paint;
       transform:translateZ(0);
+      isolation:isolate;
     }
     #hourglassWidget[hidden]{display:none}
     .hourglass-canvas{
-      width:min(98%, 400px);
-      height:100%;
+      position:absolute;
+      inset:14px 18px;
+      width:min(calc(100% - 36px), 400px);
+      height:auto;
+      aspect-ratio:2 / 3;
       max-height:760px;
+      margin:auto;
       filter:drop-shadow(0 8px 20px rgba(0,0,0,.28));
     }
+    .hourglass-canvas-webgl{opacity:0;transition:opacity .35s ease;z-index:2}
+    .hourglass-canvas-fallback{opacity:1;transition:opacity .35s ease;z-index:1}
+    #hourglassWidget.webgl-ready .hourglass-canvas-webgl{opacity:1}
+    #hourglassWidget.webgl-ready .hourglass-canvas-fallback{opacity:0}
     body.tab-guide #hourglassWidget{display:none}
     #guidePanel{display:none; margin:0 12px 12px; padding:16px; flex:1; min-height:0; overflow:auto}
     #guidePanel h2,#guidePanel h3{margin:0 0 10px}
@@ -90,9 +99,11 @@
     @media (max-width:720px) {
       :root{--hourglass-width:clamp(96px,30vw,180px);--editor-right-padding:calc(var(--hourglass-width) + 12px)}
       #hourglassWidget{padding:8px;right:6px}
+      .hourglass-canvas{inset:8px;width:calc(100% - 16px)}
     }
     @media (prefers-reduced-motion:reduce) {
       #aura,body.shake-warn,body.shake-bad{animation:none!important;transition:none!important}
+      .hourglass-canvas{transition:none!important}
     }
     /* ==== タイプライターモード用スペーサ ==== */
     :root{

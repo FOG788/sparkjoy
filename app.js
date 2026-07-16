@@ -79,7 +79,10 @@ window.makeFilename = makeFilename; // 念のため外にも公開
   const editorVersionEl=$('editorVersion');
   const aura=$('aura'), canvas=$('fx'), ctx=canvas.getContext('2d');
   const tabs=document.querySelectorAll('#tabs .tab'), autoResetSel=$('autoReset');
-  const hourglassSel=$('hourglassDuration'), hourglassWidget=$('hourglassWidget'), hourglassCanvas=$('hourglassCanvas');
+  const hourglassSel=$('hourglassDuration'), hourglassWidget=$('hourglassWidget'), hourglassCanvas=$('hourglassCanvas'), hourglass3dCanvas=$('hourglass3dCanvas');
+  const reducedMotionQuery=typeof matchMedia==='function'?matchMedia('(prefers-reduced-motion: reduce)'):{matches:false,addEventListener(){}};
+  let hourglassRenderer=null;
+  let hourglassRendererFailed=false;
 
   const hourglassOpacityEl=$('hourglassOpacity'), hourglassOpacityVal=$('hourglassOpacityVal');
   const warnEl=$('warnTh'), badEl=$('badTh'), warmupEl=$('warmupSec'), warnVal=$('warnVal'), badVal=$('badVal'), warmVal=$('warmVal');
@@ -131,7 +134,7 @@ window.makeFilename = makeFilename; // 念のため外にも公開
   const LS={high:'sj_highscore_sec',auto:'sj_auto_reset_sec',warn:'sj_warn_cpm',bad:'sj_bad_cpm',warm:'sj_warmup_sec',fs:'sj_font_px',measure:'sj_editor_measure',hourglass:'sj_hourglass_sec',hourglassOpacity:'sj_hourglass_opacity'};
   const CK={
     auto:'sj_auto_reset_sec',warn:'sj_warn_cpm',bad:'sj_bad_cpm',warm:'sj_warmup_sec',fs:'sj_font_px',measure:'sj_editor_measure',hourglass:'sj_hourglass_sec',hourglassOpacity:'sj_hourglass_opacity',
-    mode:'sj_mode',intensity:'sj_intensity',fx:'sj_fx',sound:'sj_sound',soundVol:'sj_sound_vol',
+    mode:'sj_mode',intensity:'sj_intensity',fx:'sj_fx',sound:'sj_sound',soundVol:'sj_sound_vol_v2',
     realism:'sj_realism',reverb:'sj_reverb',jam:'sj_jam'
   };
   const Persistence={
@@ -259,6 +262,24 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     const stemH=Math.max(20, bowlH*0.28);
     const topStemY=topY+lipR+stemH;
     const bottomStemY=bottomY-lipR-stemH;
+
+    // WebGLを使えない環境でも、木・真鍮・多層影の工芸品らしさを残す。
+    hg.save();
+    hg.shadowColor='rgba(0,0,0,.58)';hg.shadowBlur=Math.max(12,w*.08);hg.shadowOffsetY=Math.max(5,h*.015);
+    const woodGrad=hg.createLinearGradient(cx-bowlW*1.45,0,cx+bowlW*1.45,0);
+    woodGrad.addColorStop(0,'#250805');woodGrad.addColorStop(.28,'#8b321d');woodGrad.addColorStop(.58,'#45100a');woodGrad.addColorStop(1,'#a24825');
+    hg.fillStyle=woodGrad;
+    for(const y of [topY-lipR*.58,bottomY+lipR*.42]){
+      hg.beginPath();hg.ellipse(cx,y,bowlW*1.42,lipR*.72,0,0,Math.PI*2);hg.fill();
+    }
+    hg.shadowBlur=0;
+    const brassGrad=hg.createLinearGradient(cx-bowlW*1.2,0,cx+bowlW*1.2,0);
+    brassGrad.addColorStop(0,'#6a3c0a');brassGrad.addColorStop(.28,'#f4d172');brassGrad.addColorStop(.52,'#a66d19');brassGrad.addColorStop(.75,'#ffe291');brassGrad.addColorStop(1,'#70400c');
+    hg.fillStyle=brassGrad;
+    const postW=Math.max(5,w*.035);
+    for(const x of [cx-bowlW*1.13,cx+bowlW*1.13]) hg.fillRect(x-postW/2,topY,postW,bottomY-topY);
+    for(const y of [topY,bottomY]){hg.beginPath();hg.ellipse(cx,y,bowlW*1.22,lipR*.25,0,0,Math.PI*2);hg.fill();}
+    hg.restore();
 
     const sideStep=2;
     const smooth=(t)=>{
@@ -436,11 +457,46 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     hourglassWidget.style.opacity=String(opacityRatio);
     if(limitSec<=0){
       hourglassWidget.hidden=true;
+      hourglassWidget.dataset.ratio='0';
       return;
     }
     hourglassWidget.hidden=false;
     const ratio=Math.max(0, Math.min(1, elapsedSec/limitSec));
-    drawHourglass(ratio, true, nowMs/1000);
+    hourglassWidget.dataset.ratio=String(ratio);
+    if(hourglassRenderer){
+      try{
+        hourglassRenderer.render({ratio,flowEnabled:!!typingStart,timeSec:nowMs/1000,effects:toggleFx.checked,reduced:reducedMotionQuery.matches});
+        return;
+      }catch(error){
+        console.warn('WebGL hourglass render failed; using 2D fallback.',error);
+        try{hourglassRenderer.dispose();}catch(_){}
+        hourglassRenderer=null;hourglassRendererFailed=true;hourglassWidget.classList.remove('webgl-ready');
+      }
+    }
+    drawHourglass(ratio, !!typingStart&&toggleFx.checked&&!reducedMotionQuery.matches, nowMs/1000);
+  }
+
+  async function initializeHourglassRenderer(){
+    if(!hourglass3dCanvas||hourglassRenderer||hourglassRendererFailed||typeof WebGLRenderingContext==='undefined') return;
+    try{
+      const module=await import('./hourglass-3d.js');
+      hourglassRenderer=module.createHourglassRenderer(hourglass3dCanvas,{mobile:matchMedia('(max-width: 720px)').matches});
+      hourglassWidget.classList.add('webgl-ready');
+      syncHourglassAnimation();
+    }catch(error){
+      hourglassRendererFailed=true;
+      hourglassWidget.classList.remove('webgl-ready');
+      console.warn('WebGL hourglass unavailable; using 2D fallback.',error);
+    }
+  }
+
+  function impulseHourglass(added=1){
+    if(!hourglassRenderer||!toggleFx.checked||reducedMotionQuery.matches) return;
+    const intensity=Math.max(0,Math.min(1,(+intensityEl.value||0)/100));
+    const level=window.__lastSpeedLevel;
+    const warningBoost=level==='bad'?1:level==='warn'?.78:.58;
+    hourglassRenderer.impulse(Math.min(1,(.18+intensity*.72)*warningBoost*Math.max(1,Math.min(2,added))));
+    startHourglassAnimation();
   }
 
   function restoreSettings(){
@@ -479,6 +535,7 @@ window.makeFilename = makeFilename; // 念のため外にも公開
       el.addEventListener('change',()=>{
         Persistence.setCookie(key,el.checked?'1':'0');
         if(el===toggleFx&&!el.checked) clearVisualEffects();
+        if(el===toggleFx) syncHourglassAnimation();
       });
     });
     if(hourglassSel){
@@ -550,7 +607,8 @@ window.makeFilename = makeFilename; // 念のため外にも公開
   let hourglassAnimRaf=0;
   function shouldAnimateHourglass(elapsedSec=getEffectiveElapsedSec()){
     const limitSec=Math.max(0,parseInt(hourglassSel?.value||'0',10)||0);
-    return !document.hidden&&!document.body.classList.contains('tab-guide')&&!!typingStart&&limitSec>0&&elapsedSec<limitSec;
+    const visible=!document.hidden&&!document.body.classList.contains('tab-guide')&&limitSec>0;
+    return visible&&((!!typingStart&&elapsedSec<limitSec)||!!hourglassRenderer?.needsAnimation());
   }
   function startHourglassAnimation(){
     if(hourglassAnimRaf) return;
@@ -573,6 +631,8 @@ window.makeFilename = makeFilename; // 念のため外にも公開
     if(shouldAnimateHourglass(elapsed)) startHourglassAnimation();
     else stopHourglassAnimation();
   }
+  initializeHourglassRenderer();
+  reducedMotionQuery.addEventListener?.('change',syncHourglassAnimation);
 
   let autoResetSec=loadAuto(); autoResetSel.value=String(autoResetSec);
   autoResetSel.addEventListener('change',()=>{autoResetSec=parseInt(autoResetSel.value,10)||0; saveAuto(autoResetSec);});
@@ -640,12 +700,13 @@ window.makeFilename = makeFilename; // 念のため外にも公開
   }
   updateStats();
   syncHourglassAnimation();
-  addEventListener('resize', syncHourglassAnimation);
+  addEventListener('resize', ()=>{hourglassRenderer?.resize();syncHourglassAnimation();});
   if(hourglassWidget){
     document.addEventListener('visibilitychange', ()=>{
       syncHourglassAnimation();
     });
   }
+  addEventListener('pagehide',()=>hourglassRenderer?.dispose(),{once:true});
 
   // Crack effect
   const cracks=[], flashes=[], holes=[];
@@ -774,29 +835,51 @@ let gunshotSampleUrls = [
   './sounds/9mm-pistol-shoot-short-reverb-7152.mp3',
   './sounds/9mm-pistol-shot-6349.mp3',
   './sounds/gunshot-352466.mp3',
-  './sounds/pistol-shot-233473.mp3'
+  './sounds/pistol-shot-233473.mp3',
+  './sounds/heavy-breach-gunshot.mp3',
+  './sounds/grand-hall-gunshot.mp3'
 ];
 
-let gunshotBuffers = [];   // AudioBuffer[]
-let gunshotReady = false;
+const gunshotAudioPool=typeof Audio==='function'
+  ? gunshotSampleUrls.flatMap((url)=>Array.from({length:3},()=>{
+      const audio=new Audio(url);
+      audio.preload='auto';
+      audio.playsInline=true;
+      try{audio.load();}catch(_){}
+      return audio;
+    }))
+  : [];
+let gunshotVoiceCursor=0;
+const GUNSHOT_OUTPUT_SCALE=.25;
 
-async function loadGunshotSamples() {
-  if (!audioCtx) return;         // AudioContextがまだなら後で再挑戦
-  if (gunshotReady) return;      // 既にロード済みならスキップ
-  try {
-    const decodes = await Promise.all(
-      gunshotSampleUrls.map(async (url) => {
-        const res = await fetch(url, { cache: 'force-cache' });
-        const arr = await res.arrayBuffer();
-        return await audioCtx.decodeAudioData(arr);
-      })
-    );
-    gunshotBuffers = decodes.filter(Boolean);
-    gunshotReady = gunshotBuffers.length > 0;
-    console.log('[gunshots] loaded', gunshotBuffers.length);
-  } catch (e) {
-    console.warn('[gunshots] load failed', e);
-    gunshotReady = false;
+function playGunshotMp3(volume,realism,onFailure){
+  if(!gunshotAudioPool.length) return false;
+  const variantsPerFile=3;
+  const fileIndex=(Math.random()*gunshotSampleUrls.length)|0;
+  const startVoice=(index,voiceVolume,rate,failureHandler)=>{
+    const voiceIndex=index*variantsPerFile+(gunshotVoiceCursor++%variantsPerFile);
+    const voice=gunshotAudioPool[voiceIndex];
+    voice.pause();
+    voice.currentTime=0;
+    voice.volume=Math.max(0,Math.min(1,voiceVolume));
+    voice.playbackRate=rate;
+    const playback=voice.play();
+    playback?.catch?.((error)=>{
+      console.warn('[gunshots] direct MP3 playback failed',error);
+      failureHandler?.();
+    });
+  };
+  try{
+    startVoice(fileIndex,volume,.97+Math.random()*.06*(.35+.65*realism),onFailure);
+    // 約半数は別の銃声を低く薄く重ね、単発の輪郭を保ったまま重量感を足す。
+    if(Math.random()<.52){
+      const lowLayerIndex=(fileIndex+1+((Math.random()*(gunshotSampleUrls.length-1))|0))%gunshotSampleUrls.length;
+      startVoice(lowLayerIndex,volume*(.28+.12*realism),.82+Math.random()*.08,null);
+    }
+    return true;
+  }catch(error){
+    console.warn('[gunshots] direct MP3 playback failed',error);
+    return false;
   }
 }
   let audioCtx=null, noiseBuf=null, irs=null;
@@ -811,15 +894,13 @@ async function loadGunshotSamples() {
       return buf;
     }
     irs={room:makeIR(0.35,8), hall:makeIR(1.10,3.3), plate:makeIR(0.70,6)};
-    // ★ 実サンプルをプリロード
-    loadGunshotSamples();
   }
   function ensureAudio(){ if(!audioCtx){ const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return; audioCtx=new AC(); buildAudioAssets(); } }
   function resumeAudio(){ try{ if(audioCtx && audioCtx.state==='suspended') audioCtx.resume(); }catch(_){} }
   window.__gunVariants=[
     {name:'pistol_close', crackHz:2600, crackQ:0.9, crackDur:0.06, thumpHz:90, thumpDur:0.22, pingHz:0,    tail:'room',  tailMix:0.25},
-    {name:'pistol_room',  crackHz:1900, crackQ:0.8, crackDur:0.08, thumpHz:85, thumpDur:0.28, pingHz:1400, tail:'hall',  tailMix:0.38},
-    {name:'revolver_snap',crackHz:3200, crackQ:1.2, crackDur:0.05, thumpHz:110,thumpDur:0.20, pingHz:2200, tail:'plate', tailMix:0.28},
+    {name:'pistol_room',  crackHz:1900, crackQ:0.8, crackDur:0.08, thumpHz:85, thumpDur:0.28, pingHz:0,    tail:'hall',  tailMix:0.38},
+    {name:'revolver_snap',crackHz:3200, crackQ:1.2, crackDur:0.05, thumpHz:110,thumpDur:0.20, pingHz:0,    tail:'plate', tailMix:0.28},
     {name:'distant_crack',crackHz:2400, crackQ:0.7, crackDur:0.07, thumpHz:70, thumpDur:0.18, pingHz:0,    tail:'hall',  tailMix:0.45, postLP:3500}
   ];
   let __sparkjoyKeyTimes=[]; const WPM_WINDOW_MS=2000;
@@ -900,43 +981,13 @@ async function loadGunshotSamples() {
       requestAnimationFrame(keepCaretCentered);
     });
   }
-  function playGunshot(){
-    if(!toggleSound.checked) return; ensureAudio(); if(!audioCtx) return; resumeAudio();
-    const a=audioCtx, now=a.currentTime, UIvol=(+soundVolEl.value/100);
+  function playGunshot(forceProcedural=false){
+    if(!toggleSound.checked) return;
+    const UIvol=(+soundVolEl.value/100)*GUNSHOT_OUTPUT_SCALE;
     const R=Math.max(0,Math.min(1,(+realismEl.value||0)/100)), RV=Math.max(0,Math.min(1,(+reverbEl.value||0)/100));
-      // === ここから追加：実サンプルを優先再生 ===
-  if (gunshotReady && gunshotBuffers.length) {
-    const buf = gunshotBuffers[(Math.random()*gunshotBuffers.length)|0];
-    const src = a.createBufferSource(); src.buffer = buf;
-    src.playbackRate.setValueAtTime(0.96 + Math.random()*0.08, now); // 微ピッチ
-    const pan = a.createStereoPanner ? a.createStereoPanner() : null;
-    if (pan) {
-      const p=(lastCaret.x/innerWidth-0.5)*1.6;
-      pan.pan.setValueAtTime(Math.max(-1,Math.min(1,p)), now);
-    }
-    const conv = a.createConvolver(); conv.buffer = irs ? irs.hall : null;
-    const dry = a.createGain(); const wet = a.createGain();
-    const wetMix = Math.min(1, (0.15 + 0.85*RV) * (0.3 + 0.7*R));
-    dry.gain.setValueAtTime(1, now); wet.gain.setValueAtTime(wetMix, now);
-
-    const comp=a.createDynamicsCompressor();
-    comp.threshold.setValueAtTime(-28+(-8*R),now);
-    comp.knee.setValueAtTime(18+8*R,now);
-    comp.ratio.setValueAtTime(2.5+3*R,now);
-    comp.attack.setValueAtTime(0.003-0.001*R,now);
-    comp.release.setValueAtTime(0.18-0.05*R,now);
-
-    const out=a.createGain(); out.gain.setValueAtTime(UIvol, now);
-
-    if (pan){ src.connect(pan); pan.connect(dry); pan.connect(conv); }
-    else { src.connect(dry); src.connect(conv); }
-    conv.connect(wet);
-    dry.connect(comp); wet.connect(comp); comp.connect(out).connect(a.destination);
-
-    src.start(now);
-    return; // ここで終了。以下の合成ロジックはフォールバック
-  }
-  // === ここまで追加 ===
+    if(!forceProcedural&&playGunshotMp3(UIvol,R,()=>playGunshot(true))) return;
+    ensureAudio(); if(!audioCtx) return; resumeAudio();
+    const a=audioCtx, now=a.currentTime;
     const v=window.__gunVariants[Math.floor(Math.random()*window.__gunVariants.length)];
     const m=mapWPM(getWPM());
     const crackDur=Math.max(0.03,Math.min(0.2, v.crackDur*(1.4-0.7*R))) * m.durMul;
@@ -961,11 +1012,13 @@ async function loadGunshotSamples() {
     const thOsc=a.createOscillator(); thOsc.type='triangle'; thOsc.frequency.setValueAtTime(v.thumpHz,now);
     const thGain=a.createGain(); thGain.gain.setValueAtTime(thAmp,now); thGain.gain.exponentialRampToValueAtTime(0.0001,now+thDur); thOsc.connect(thGain);
 
-    let pingOsc=null,pingGain=null; if(v.pingHz && pingAmp>0){ pingOsc=a.createOscillator(); pingOsc.type='square'; pingOsc.frequency.setValueAtTime(v.pingHz*(0.95+Math.random()*0.1),now); pingGain=a.createGain(); pingGain.gain.setValueAtTime(pingAmp,now); pingGain.gain.exponentialRampToValueAtTime(0.0001,now+0.12); pingOsc.connect(pingGain); }
+    // 読込待ちの代替音も、電子音ではなく低い砲声風の二層構造にする。
+    const subOsc=a.createOscillator(); subOsc.type='sine'; subOsc.frequency.setValueAtTime(62+Math.random()*10,now); subOsc.frequency.exponentialRampToValueAtTime(38,now+Math.max(.12,thDur));
+    const subGain=a.createGain(); subGain.gain.setValueAtTime(.95+.35*R,now); subGain.gain.exponentialRampToValueAtTime(.0001,now+Math.max(.16,thDur*1.35)); subOsc.connect(subGain);
 
     const dry=a.createGain(), wet=a.createGain(); dry.gain.setValueAtTime(1,now); wet.gain.setValueAtTime(Math.min(1.0,wetMix*UIvol),now);
     const conv=a.createConvolver(); conv.buffer=irs? irs[v.tail]:null;
-    const sum=a.createGain(); crackGain.connect(sum); thGain.connect(sum); if(pingGain) pingGain.connect(sum);
+    const sum=a.createGain(); crackGain.connect(sum); thGain.connect(sum); subGain.connect(sum);
     let post=null; if(v.postLP){ post=a.createBiquadFilter(); post.type='lowpass'; post.frequency.setValueAtTime(v.postLP,now); }
     sum.connect(dry); sum.connect(conv); conv.connect(wet);
     const head=a.createGain(); head.gain.setValueAtTime(1,now);
@@ -974,7 +1027,7 @@ async function loadGunshotSamples() {
     if(panNode){ last.connect(panNode).connect(out).connect(a.destination); } else { last.connect(out).connect(a.destination); }
     crackSrc.start(now); crackSrc.stop(now+crackDur+0.02);
     thOsc.start(now);   thOsc.stop(now+thDur+0.05);
-    if(pingOsc){ pingOsc.start(now); pingOsc.stop(now+0.15); }
+    subOsc.start(now); subOsc.stop(now+Math.max(.18,thDur*1.4));
   }
   ['pointerdown','keydown'].forEach(ev=>addEventListener(ev,()=>{if(toggleSound.checked){ensureAudio();resumeAudio();}},{once:true}));
 
@@ -1003,6 +1056,7 @@ async function loadGunshotSamples() {
         flashes.push({x:p.x,y:p.y,age:0,life:22,size:160*(Math.max(0.6,(+intensityEl.value)/100))});
       }
       playGunshot();
+      impulseHourglass(delta);
     } else { 
       updateStats();
     }
@@ -1025,7 +1079,7 @@ async function loadGunshotSamples() {
       const isInsertish=type.startsWith('insert')||lenNow>lenBefore;
       startStatsIfNeeded(compBaseLen);
       updateStats();
-      if(isInsertish && (now-lastCompFxAt)>60){ crackAtCaret(); lastCompFxAt=now; }
+      if(isInsertish && (now-lastCompFxAt)>60){ crackAtCaret(); impulseHourglass(Math.max(1,lenNow-lenBefore)); lastCompFxAt=now; }
       return;
     }
 
@@ -1035,7 +1089,7 @@ async function loadGunshotSamples() {
     lastInputAt=now;
     startStatsIfNeeded(Core.getSessionBaseLength(lenBefore,lenNow,isPaste));
     updateStats();
-    if(!isPaste && added>0){ markKeystroke(); crackAtCaret(); }
+    if(!isPaste && added>0){ markKeystroke(); crackAtCaret(); impulseHourglass(added); }
     scheduleTW();
   }
   editor.addEventListener('input', onInput);
